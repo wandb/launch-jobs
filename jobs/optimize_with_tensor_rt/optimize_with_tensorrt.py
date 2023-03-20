@@ -10,6 +10,7 @@ import wandb
 
 # Used to load example configs from wandb jobs repo.
 # Is there a better way to handle this?
+config = {}
 cfg = os.getenv("WANDB_JOBS_REPO_CONFIG")
 if cfg:
     with open(cfg) as f:
@@ -30,7 +31,7 @@ def benchmark(warmup_rounds, benchmarking_rounds, model, inp, metric_name):
         wandb.log({metric_name: time_ms, "benchmarking_step": i})
 
 
-with wandb.init(project="trt-testing", config=config) as run:
+with wandb.init(config=config, job_type="optimize_model") as run:
     wandb.termlog("downloading model")
     model_dir = run.config.model.download()
     model = tf.keras.models.load_model(model_dir)

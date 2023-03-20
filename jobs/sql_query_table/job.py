@@ -7,13 +7,14 @@ import wandb
 
 # Used to load example configs from wandb jobs repo.
 # Is there a better way to handle this?
+config = {}
 cfg = os.getenv("WANDB_JOBS_REPO_CONFIG")
 if cfg:
     with open(cfg) as f:
         config = yaml.safe_load(f)
 
 
-with wandb.init(config=config) as run:
+with wandb.init(config=config, job_type="data_pipeline") as run:
     protocol = run.config.connection["protocol"]
     base_url = run.config.connection["base_url"]
     username = os.getenv(run.config.connection["username_env"])

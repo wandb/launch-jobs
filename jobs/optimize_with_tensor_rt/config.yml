@@ -2,5 +2,5 @@ model: 'wandb-artifact://megatruong/trt-testing/inceptionv3:latest'
 precision: 'FP32'
 benchmark:
   input_shape: [32, 299, 299, 3]
-  benchmarking_rounds: 1000,
+  benchmarking_rounds: 1000
   warmup_rounds: 50

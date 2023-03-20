@@ -45,13 +45,14 @@ supported_frameworks = {"tensorflow", "pytorch"}
 
 # Used to load example configs from wandb jobs repo.
 # Is there a better way to handle this?
+config = {}
 cfg = os.getenv("WANDB_JOBS_REPO_CONFIG")
 if cfg:
     with open(cfg) as f:
         config = yaml.safe_load(f)
 
 
-with wandb.init(config=config) as run:
+with wandb.init(config=config, job_type="deploy_model") as run:
     if run.config.framework not in supported_frameworks:
         err_raise(
             f"Model type: {run.config.framework} not supported.  Model type must be one of {run.config.supported_frameworks}"

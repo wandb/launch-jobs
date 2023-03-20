@@ -20,12 +20,13 @@ import wandb
 
 # Used to load example configs from wandb jobs repo.
 # Is there a better way to handle this?
+config = {}
 cfg = os.getenv("WANDB_JOBS_REPO_CONFIG")
 if cfg:
     with open(cfg) as f:
         config = yaml.safe_load(f)
 
-with wandb.init(config=config) as run:
+with wandb.init(config=config, job_type="webhook") as run:
     token = os.getenv(run.config.github_api_token_env_var)
     workflow = (
         Github(token)

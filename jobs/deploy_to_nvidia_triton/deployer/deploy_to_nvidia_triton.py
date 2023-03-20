@@ -76,12 +76,13 @@ valid_frameworks = ["pytorch", "tensorflow"]
 
 # Used to load example configs from wandb jobs repo.
 # Is there a better way to handle this?
+config = {}
 cfg = os.getenv("WANDB_JOBS_REPO_CONFIG")
 if cfg:
     with open(cfg) as f:
         config = yaml.safe_load(f)
 
-with wandb.init(config=config, job_type="deploy_to_triton", save_code=True) as run:
+with wandb.init(config=config, job_type="deploy_model") as run:
     model_name, model_ver = run.config.artifact.name.split(":v")
     model_ver = int(model_ver)
     if not isinstance(model_ver, int):

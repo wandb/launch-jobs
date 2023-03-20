@@ -1,2 +1,4 @@
+connectorx
 polars
+pyarrow
 wandb
