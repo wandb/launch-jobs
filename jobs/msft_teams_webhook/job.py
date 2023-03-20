@@ -72,3 +72,5 @@ with wandb.init(config=config, job_type="teams-webhook") as run:
     ):
         with attempt:
             msg.send()
+
+    run.log_code()
