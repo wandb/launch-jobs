@@ -14,5 +14,6 @@ jobs:
     - name: Generate Weights & Biases Report
       uses: andrewtruong/wandb_create_report_action@v0.05
       with:
+        github_token: ${{ secrets.github_token }}
         wandb_api_key: ${{ secrets.wandb_api_key }}
         report_template_filename: ${{ inputs.template-file }}
