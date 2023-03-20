@@ -1,0 +1,18 @@
+name: Generate Report
+run-name: ${{ github.actor }} is generating a new report
+on:
+  workflow_dispatch:
+    inputs:
+      template-file:
+        description: "Report Template Python Script"
+        required: true
+        default: workflow_helpers/report_template.py
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Generate Weights & Biases Report
+      uses: andrewtruong/wandb_create_report_action@v0.05
+      with:
+        wandb_api_key: ${{ secrets.wandb_api_key }}
+        report_template_filename: ${{ inputs.template-file }}

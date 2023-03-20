@@ -1,3 +1,7 @@
 # launch-jobs
 
-Jobs that run on W&B Launch
+This repo contains a collection of jobs that can be run on W&B Launch.
+
+## Notes
+
+Internal users: Run the notebook `loader.ipynb` to load jobs into the `wandb/jobs` project. Some jobs may take a while to run. Notably, the deploy jobs including Sagemaker and Triton take a while because they verify that the endpoint is running before exiting.

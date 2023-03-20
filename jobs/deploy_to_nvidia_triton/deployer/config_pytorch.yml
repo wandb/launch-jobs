@@ -1,0 +1,10 @@
+artifact: "wandb-artifact://megatruong/ptl-testing2/my_model:v0"
+framework: "pytorch"
+triton_url: "localhost:8000"
+triton_bucket: "andrew-triton-bucket"
+triton_model_repo_path: "models"
+triton_model_config_overrides: {
+    "max_batch_size": 32,
+    "input": [{"name": "conv1", "data_type": "TYPE_FP32", "dims": [3, 28, 28]}],
+    "output": [{"name": "fc", "data_type": "TYPE_FP32", "dims": [1]}],
+}
