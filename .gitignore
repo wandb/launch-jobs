@@ -1,2 +1,4 @@
 .ipynb_checkpoints
 wandb/
+evals/
+jobs/openai_eval/*.jsonl

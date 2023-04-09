@@ -1,0 +1,3 @@
+model: gpt-4
+eval: aba_mrpc_true_false
+max_samples: 4
