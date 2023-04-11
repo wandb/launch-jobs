@@ -25,8 +25,13 @@ def remove_no_variance_cols(df):
     return df.loc[:, cols_with_var]
 
 
-with wandb.init(config=config, project="openai-eval-testing2") as run:
-    settings = config
+with wandb.init(
+    config=config, settings=wandb.Settings(enable_job_creation=True, disable_git=True)
+) as run:
+    settings = run.config
+
+    print("settings", settings)
+
     if any(k not in settings for k in ["model", "eval"]):
         raise ValueError("`model` and `eval` must be specified in `oaieval_settings`")
     if "record_path" in settings:
@@ -37,6 +42,8 @@ with wandb.init(config=config, project="openai-eval-testing2") as run:
     args = [settings["model"], settings["eval"]]
     for k, v in kwarg_settings.items():
         args.append(f"--{k}={v}")
+
+    print("args", args)
 
     record_path = settings.get("record_path", "temp.jsonl")
     cmd = ["oaieval"] + args + ["--record_path", record_path]
@@ -57,5 +64,5 @@ with wandb.init(config=config, project="openai-eval-testing2") as run:
         .pipe(expand, "data")
     )
 
-    run.config["spec"] = spec
-    run.log({**final_report, "sampling": df2})
+    run.log({**final_report, "sampling": df2, "spec": spec})
+    run.log_code()
