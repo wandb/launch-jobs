@@ -1,25 +1,40 @@
 import datetime
 import json
 import os
+import shutil
 import subprocess
+from functools import reduce
+from pathlib import Path
 
 import openai
 import pandas as pd
 import wandb.apis.reports as wr
-from pathlib import Path
 import yaml
 
 import wandb
 
 
 def expand(df, col):
-    return pd.concat([df, pd.json_normalize(df[col])], axis=1).drop(col, axis=1)
+    return pd.concat(
+        [
+            df.reset_index(drop=True),
+            pd.json_normalize(df[col]).reset_index(drop=True),
+        ],
+        axis=1,
+    ).drop(col, axis=1)
 
 
 def extend_chatml(r):
+    def get_correct(r):
+        if hasattr(r, "correct"):
+            return r.correct
+        if hasattr(r, "choice"):
+            return True if r.choice == "Y" else False
+        return None
+
     extensions = [
         # {'role': 'options', 'content': r.options},
-        {"role": "assistant", "content": r.sampled, "correct": r.correct}
+        {"role": "assistant", "content": r.sampled, "correct": get_correct(r)}
     ]
     try:
         return r.prompt + extensions
@@ -174,20 +189,35 @@ def stylize_msg(msg):
     """
 
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+def chatml_to_markdown(convo):
+    md = ""
+    for msg in convo:
+        role = msg["role"]
+        content = msg["content"]
+        # correct = msg.get("correct")
+        # content = f'<span style="color:blue">{content}</span>'
+        md += f"# {role}\n{content}\n\n"
 
-p = Path("config.yml")
-if p.is_file():
-    with open(p) as f:
-        config = yaml.safe_load(f)
+    return md
 
-with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run:
-    settings = run.config
+
+def get_expand_subsets(df, col):
+    return {
+        subset: df.loc[df[col] == subset].pipe(expand, "data").reset_index(drop=True)
+        for subset in df[col].unique()
+    }
+
+
+def run_eval(settings):
     if any(k not in settings for k in ["model", "eval"]):
         raise ValueError("`model` and `eval` must be specified in `oaieval_settings`")
     if "record_path" in settings:
         del settings["record_path"]
-        wandb.termwarn("")
+        wandb.termwarn("Using `record_path` in `oaieval_settings` is not supported.")
+
+    if custom_registry := run.config.get("custom_registry"):
+        art_path = custom_registry.download()
+        shutil.copytree(art_path, "/setup/evals/evals", dirs_exist_ok=True)
 
     kwarg_settings = {k: v for k, v in settings.items() if k not in ["model", "eval"]}
     args = [settings["model"], settings["eval"]]
@@ -196,50 +226,63 @@ with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run
 
     record_path = settings.get("record_path", "temp.jsonl")
     cmd = ["oaieval"] + args + ["--record_path", record_path]
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, timeout=600)
 
-    result = pd.read_json(record_path, lines=True)
 
-    spec = result.iloc[0, 0]
-    final_report = result.iloc[1, 1]
+def get_evals_table(test_results):
+    df = test_results.iloc[2:, 2:]
+    dfs = get_expand_subsets(df, "type")
 
-    # There is probably a better way to do this, but I can't seem to capture the fname...
-    new_fname = f"{spec['run_id']}_{settings['model']}_{settings['eval']}.jsonl"
-    os.rename(record_path, new_fname)
+    key = {"run_id", "sample_id"}
+    overlapping_cols = reduce(lambda a, b: set(a) & set(b), dfs.values())
 
-    df = result.iloc[2:, 2:].pipe(expand, "data")
-
-    key = ["run_id", "event_id", "sample_id"]
-    sampling_cols = ["prompt", "created_at"]
-    match_cols = ["sampled", "correct", "expected", "picked", "options"]
-
-    df_sampling = df.loc[df.type == "sampling", key + sampling_cols].reset_index(
-        drop=True
-    )
-    df_match = (
-        df.loc[df.type == "match", key + match_cols]
-        .assign(event_id=lambda df: df.event_id - 1)
-        .reset_index(drop=True)
-    )
-    df_merged = df_sampling.merge(df_match).drop("event_id", axis=1)
-    df_final = df_merged.assign(
-        extended_convo=df_merged.apply(extend_chatml, axis=1)
-    ).pipe(
-        lambda df: df.assign(
-            model=settings["model"],
-            chatml_viz=df.extended_convo.apply(make_chatml_viz),
-            prompt=df.prompt.apply(json.dumps),
-            extended_convo=df.extended_convo.apply(json.dumps),
+    df2 = dfs["sampling"]
+    eval_levels = ["", "modelgraded_", "meta_modelgraded_"]
+    eval_dfs = []
+    for i, lvl in enumerate(eval_levels):
+        df3 = (
+            df2.groupby(list(key))
+            .nth(i)
+            .pipe(lambda df: df.assign(extended_convo=df.apply(extend_chatml, axis=1)))
+            .pipe(
+                lambda df: df.assign(
+                    chatml_viz=df.extended_convo.apply(make_chatml_viz),
+                    markdown=df.extended_convo.apply(chatml_to_markdown),
+                    prompt=df.prompt.apply(json.dumps),
+                    extended_convo=df.extended_convo.apply(json.dumps),
+                )
+            )
+            .add_prefix(lvl)
         )
-    )
-    run.log(
-        {
-            "final_report": final_report,
-            "sampling": df_final,
-            "spec": spec,
-        }
+        if len(df3) > 0:
+            eval_dfs.append(df3)
+
+    eval_df = reduce(lambda x, y: x.join(y), eval_dfs).reset_index()
+    dfs["sampling"] = eval_df
+
+    dfs2 = {}
+    for k, _df in dfs.items():
+        extra_drop = set(("created_at", "sampled")) if k == "sampling" else set()
+        drops = overlapping_cols - key - extra_drop
+        dfs2[k] = _df.drop(columns=drops).reset_index(drop=True)
+
+    final_df = reduce(
+        lambda df, df2: df.merge(df2, on=list(key)), dfs2.values()
+    ).assign(
+        completion_fns=str(spec["completion_fns"]),
+        eval_name=spec["eval_name"],
     )
 
+    scary_cols = final_df.columns[
+        (final_df.dtypes == "object") & ~final_df.columns.str.contains("chatml_viz")
+    ]
+    for col in scary_cols:
+        final_df[col] = final_df[col].astype(str)
+
+    return final_df
+
+
+def generate_report(run, settings):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     models = ["gpt-4", "gpt-3.5-turbo"]
 
@@ -264,3 +307,39 @@ with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run
             ),
         ],
     ).save()
+
+
+def get_test_results():
+    return pd.read_json("temp.jsonl", lines=True)
+
+
+def get_spec(test_results):
+    return test_results.iloc[0, 0]
+
+
+def get_final_report(test_results):
+    return test_results.iloc[1, 1]
+
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+p = Path(os.getenv("_WANDB_CONFIG_FILENAME"))
+if p.is_file():
+    with p.open() as f:
+        config = yaml.safe_load(f)
+
+with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run:
+    settings = run.config["eval_settings"]
+    run_eval(settings)
+
+    test_results = get_test_results()
+    spec = get_spec(test_results)
+    final_report = get_final_report(test_results)
+    evals = get_evals_table(test_results)
+
+    run.log({"evals": evals, **final_report})
+    art = wandb.Artifact("results", type="results")
+    art.add_file("temp.jsonl")
+    run.log_artifact(art)
+
+    generate_report(run, settings)
