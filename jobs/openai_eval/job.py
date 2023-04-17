@@ -33,7 +33,6 @@ def extend_chatml(r):
         return None
 
     extensions = [
-        # {'role': 'options', 'content': r.options},
         {"role": "assistant", "content": r.sampled, "correct": get_correct(r)}
     ]
     try:
@@ -194,8 +193,6 @@ def chatml_to_markdown(convo):
     for msg in convo:
         role = msg["role"]
         content = msg["content"]
-        # correct = msg.get("correct")
-        # content = f'<span style="color:blue">{content}</span>'
         md += f"# {role}\n{content}\n\n"
 
     return md
@@ -208,7 +205,16 @@ def get_expand_subsets(df, col):
     }
 
 
-def run_eval(settings):
+def override_base_prompt(convo, new_prompt):
+    for i, msg in enumerate(convo):
+        if msg.get("role") != "system":
+            break
+
+    new_convo = [{"role": "system", "content": new_prompt}] + convo[i:]
+    return new_convo
+
+
+def run_eval(run, settings):
     if any(k not in settings for k in ["model", "eval"]):
         raise ValueError("`model` and `eval` must be specified in `oaieval_settings`")
     if "record_path" in settings:
@@ -218,6 +224,27 @@ def run_eval(settings):
     if custom_registry := run.config.get("custom_registry"):
         art_path = custom_registry.download()
         shutil.copytree(art_path, "/setup/evals/evals", dirs_exist_ok=True)
+
+    if override_prompt := run.config.get("override_prompt"):
+        registry_path = Path("/setup/evals/evals/registry")
+
+        for f in (registry_path / "evals").glob("**/*.yaml"):
+            d = yaml.safe_load(f.open())
+
+            if settings["eval"] not in d:
+                continue
+
+            eval_id = d[settings["eval"]]["id"]
+            jsonl_args = {
+                k: v for k, v in d[eval_id]["args"].items() if str(v).endswith(".jsonl")
+            }
+            break
+
+        for k, v in jsonl_args.items():
+            fpath = registry_path / "data" / v
+            df = pd.read_json(fpath, lines=True)
+            df.input = df.input.apply(override_base_prompt, new_prompt=override_prompt)
+            df.to_json(fpath, lines=True, orient="records")
 
     kwarg_settings = {k: v for k, v in settings.items() if k not in ["model", "eval"]}
     args = [settings["model"], settings["eval"]]
@@ -229,19 +256,38 @@ def run_eval(settings):
     subprocess.run(cmd, check=True, timeout=600)
 
 
-def get_evals_table(test_results):
-    df = test_results.iloc[2:, 2:]
-    dfs = get_expand_subsets(df, "type")
+def get_overlapping_cols(dfs):
+    cols = {}
+    for i, df in enumerate(dfs):
+        for col in df:
+            if col not in cols:
+                cols[col] = [i]
+            else:
+                cols[col].append(i)
 
-    key = {"run_id", "sample_id"}
-    overlapping_cols = reduce(lambda a, b: set(a) & set(b), dfs.values())
+    overlaps = set(col for col, indices in cols.items() if len(set(indices)) > 1)
+    return overlaps
 
-    df2 = dfs["sampling"]
+
+def drop_if_exists(df, col):
+    if col in df:
+        df = df.drop(col, axis=1)
+    return df
+
+
+def merge(dfs, key, drop_duplicates=True, suffixes=("", "__extraneous")):
+    df = reduce(lambda x, y: x.merge(y, on=list(key), suffixes=suffixes), dfs)
+    if drop_duplicates:
+        df = df.drop(df.filter(regex=suffixes[-1]), axis=1)
+    return df
+
+
+def reshape_by_eval_level(df, key):
     eval_levels = ["", "modelgraded_", "meta_modelgraded_"]
     eval_dfs = []
     for i, lvl in enumerate(eval_levels):
-        df3 = (
-            df2.groupby(list(key))
+        df2 = (
+            df.groupby(list(key))
             .nth(i)
             .pipe(lambda df: df.assign(extended_convo=df.apply(extend_chatml, axis=1)))
             .pipe(
@@ -254,24 +300,31 @@ def get_evals_table(test_results):
             )
             .add_prefix(lvl)
         )
-        if len(df3) > 0:
-            eval_dfs.append(df3)
+        if len(df2) > 0:
+            eval_dfs.append(df2)
 
     eval_df = reduce(lambda x, y: x.join(y), eval_dfs).reset_index()
-    dfs["sampling"] = eval_df
+    return eval_df
 
-    dfs2 = {}
-    for k, _df in dfs.items():
-        extra_drop = set(("created_at", "sampled")) if k == "sampling" else set()
-        drops = overlapping_cols - key - extra_drop
-        dfs2[k] = _df.drop(columns=drops).reset_index(drop=True)
 
-    final_df = reduce(
-        lambda df, df2: df.merge(df2, on=list(key)), dfs2.values()
-    ).assign(
-        completion_fns=str(spec["completion_fns"]),
-        eval_name=spec["eval_name"],
+def get_evals_table(test_results):
+    key = {"sample_id"}
+
+    df = test_results.iloc[2:, 2:]
+    dfs = get_expand_subsets(df, "type")
+    dfs["sampling"] = dfs["sampling"].pipe(reshape_by_eval_level, key=key)
+
+    final_df = merge(dfs.values(), key).assign(
+        completion_fns=str(spec.get("completion_fns")),
+        eval_name=spec.get("eval_name"),
     )
+    final_df["completion_cost"] = final_df.usage_total_tokens.apply(add_completion_cost)
+
+    if "override_prompt" in run.config:
+        final_df["custom_prompt"] = run.config["override_prompt"]
+
+    if "custom_registry" in run.config:
+        final_df["registry_version"] = run.config["custom_registry"].version
 
     scary_cols = final_df.columns[
         (final_df.dtypes == "object") & ~final_df.columns.str.contains("chatml_viz")
@@ -286,26 +339,30 @@ def generate_report(run, settings):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     models = ["gpt-4", "gpt-3.5-turbo"]
 
+    reference_report = wr.Report.from_url(
+        "https://wandb.ai/megatruong/openai-eval105/reports/gpt-3-5-turbo-manga-translation-panel--Vmlldzo0MDg2MzM2"
+    )
+
     report = wr.Report(
         entity=run.entity,
         project=run.project,
         title=f"{settings['model']}: {settings['eval']}",
         description=f"{now}",
         width="fluid",
-        blocks=[
-            wr.H1("Sampling Summary"),
-            wr.PanelGrid(
-                panels=[
-                    wr.WeavePanelSummaryTable("sampling", layout={"w": 24, "h": 16})
-                ],
-                runsets=[
-                    wr.Runset(
-                        run.entity, run.project, name=model
-                    ).set_filters_with_python_expr(f"model == '{model}'")
-                    for model in models
-                ],
-            ),
-        ],
+        blocks=reference_report.blocks,
+        # wr.H1("Leaderboard and Summary"),
+        # panel_grid_template
+        # wr.PanelGrid(
+        #     panels=[
+        #         wr.WeavePanelSummaryTable("sampling", layout={"w": 24, "h": 16})
+        #     ],
+        #     runsets=[
+        #         wr.Runset(
+        #             run.entity, run.project, name=model
+        #         ).set_filters_with_python_expr(f"model == '{model}'")
+        #         for model in models
+        #     ],
+        # ),
     ).save()
 
 
@@ -321,6 +378,19 @@ def get_final_report(test_results):
     return test_results.iloc[1, 1]
 
 
+def override_base_prompt(convo, new_prompt):
+    for i, msg in enumerate(convo):
+        if msg.get("role") != "system":
+            break
+
+    new_convo = [{"role": "system", "content": new_prompt}] + convo[i:]
+    return new_convo
+
+
+def add_completion_cost(n_tokens, cost_per_1k_tokens=0.06):
+    return (n_tokens // 1000 + 1) * cost_per_1k_tokens
+
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 p = Path(os.getenv("_WANDB_CONFIG_FILENAME"))
@@ -330,14 +400,32 @@ if p.is_file():
 
 with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run:
     settings = run.config["eval_settings"]
-    run_eval(settings)
+    run_eval(run, settings)
 
     test_results = get_test_results()
     spec = get_spec(test_results)
     final_report = get_final_report(test_results)
+    if not isinstance(final_report, dict):
+        final_report = {"final_report": final_report}
     evals = get_evals_table(test_results)
+    total_completion_cost = evals.completion_cost.sum()
 
-    run.log({"evals": evals, **final_report})
+    run.log(
+        {
+            "evals": wandb.plot_table(
+                vega_spec_name="megatruong/test",
+                data_table=wandb.Table(dataframe=evals),
+                fields={
+                    "metric": "sacrebleu_sentence_score",
+                    "color": "custom_prompt",
+                    "xaxis": "registry_version",
+                    "hover": "markdown",
+                },
+            ),
+            "total_completion_cost": total_completion_cost,
+            **final_report,
+        }
+    )
     art = wandb.Artifact("results", type="results")
     art.add_file("temp.jsonl")
     run.log_artifact(art)
