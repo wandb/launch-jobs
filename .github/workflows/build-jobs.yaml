@@ -12,7 +12,7 @@ jobs:
       - name: List Directories
         run: |
           directories=$(ls jobs | jq -Rsc 'split("\n")[:-1]')
-          echo "$directories"
+          echo "$directories" >> $GITHUB_OUTPUT
 
   repeat-steps:
     needs: find-directories
