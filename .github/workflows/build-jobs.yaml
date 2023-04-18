@@ -10,12 +10,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Docker login
+        run: |
+          docker login -u itsandrewtruong -p "${{ secrets.DOCKERHUB_TOKEN }}"
+
       - name: Build everything
         run: |
-          docker build -t openai-eval jobs/openai_eval && \
-          docker tag openai-eval itsandrewtruong/openai-eval:latest && \
-          docker push itsandrewtruong/openai-eval && \
-          docker run --env-file /Users/andrewtruong/.wandb_launch/env.list \
-                      -e WANDB_PROJECT=openai-eval110 \
-                      -e WANDB_DOCKER=itsandrewtruong/openai-eval:latest \
-                      --rm --net=host itsandrewtruong/openai-eval:latest
+          docker build -t openai-eval jobs/openai_eval
+
+      - name: Tag and push
+        run: |
+          docker tag openai-eval itsandrewtruong/openai-eval-gh:latest && \
+          docker push itsandrewtruong/openai-eval-gh
