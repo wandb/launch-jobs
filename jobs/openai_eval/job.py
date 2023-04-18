@@ -323,7 +323,7 @@ def reshape_by_eval_level(df, key):
 def get_evals_table(test_results):
     key = {"sample_id"}
 
-    df = test_results.iloc[2:, 2:]
+    df = get_base_df(test_results)
     dfs = get_expand_subsets(df, "type")
     dfs["sampling"] = dfs["sampling"].pipe(reshape_by_eval_level, key=key)
 
@@ -376,15 +376,12 @@ def generate_report(run):
     model_name, override_prompt = get_model_name_prompt(run.config.model)
 
     reference_report = wr.Report.from_url(
-        "https://wandb.ai/megatruong/openai-eval105/reports/gpt-3-5-turbo-manga-translation-panel--Vmlldzo0MDg2MzM2"
+        "https://wandb.ai/wandb/jobs/reports/Baseline-Report-Template--Vmlldzo0MDk5NTUz"
     )
     blocks = []
     for b in reference_report.blocks:
         if isinstance(b, wr.PanelGrid):
-            rs = wr.Runset(
-                run.entity, run.project, groupby=["User"]
-            ).set_filters_with_python_expr('CreatedTimestamp >= "2020-04-17 00:00:00"')
-            b.runsets = [rs]
+            b.runsets = [wr.Runset(run.entity, run.project)]
         blocks.append(b)
 
     wr.Report(
@@ -401,12 +398,21 @@ def get_test_results():
     return pd.read_json("temp.jsonl", lines=True)
 
 
+def get_base_df(test_results):
+    return test_results.loc[
+        test_results.spec.isna() & test_results.final_report.isna()
+    ].drop(["spec", "final_report"], axis=1)
+
+
 def get_spec(test_results):
-    return test_results.iloc[0, 0]
+    return test_results.loc[test_results.spec.notna()].spec.iloc[0]
 
 
 def get_final_report(test_results):
-    if not isinstance(final_report := test_results.iloc[1, 1], dict):
+    final_report = test_results.loc[
+        test_results.final_report.notna()
+    ].final_report.iloc[0]
+    if not isinstance(final_report, dict):
         final_report = {"final_report": final_report}
     return final_report
 
