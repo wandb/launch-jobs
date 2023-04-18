@@ -19,7 +19,7 @@ jobs:
     needs: find-directories
     strategy:
       matrix:
-        dir: ${{ fromJson(needs.find-directories.outputs.dirs) }}
+        dir: ${{ needs.find-directories.outputs.dirs }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
