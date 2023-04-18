@@ -13,7 +13,7 @@ jobs:
         id: get-dirs
         run: |
           find jobs -type d -mindepth 1 -maxdepth 1 > dirs.txt
-          echo ::set-output name=dirs::$(cat dirs.txt)
+          echo ${{ steps.get-dirs.outputs.dirs }}
 
   build:
     name: Build
