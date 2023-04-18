@@ -10,6 +10,7 @@ import openai
 import pandas as pd
 import wandb.apis.reports as wr
 import yaml
+import shlex
 
 import wandb
 
@@ -261,11 +262,26 @@ def run_eval(run):
         wandb.termwarn("Using `record_path` in `oaieval_settings` is not supported.")
 
     args = [model_name, run.config.eval]
+    valid_keys = [
+        "extra_eval_params",
+        "max_samples",
+        "cache",
+        "visible",
+        "seed",
+        "user",
+        "log_to_file",
+        "registry_path",
+        "debug",
+        "local-run",
+        "dry-run",
+        "dry-run-logging",
+    ]
     for k, v in oaieval_settings.items():
-        args.append(f"--{k}={v}")
+        if k in valid_keys:
+            v = shlex.quote(str(v))
+            args.append(f"--{k}={v}")
 
-    record_path = oaieval_settings.get("record_path", "temp.jsonl")
-    cmd = ["oaieval"] + args + ["--record_path", record_path]
+    cmd = ["oaieval"] + args + ["--record_path", "temp.jsonl"]
     subprocess.run(cmd, check=True, timeout=300)
 
 
