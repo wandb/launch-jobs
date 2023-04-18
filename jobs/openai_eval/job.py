@@ -214,46 +214,59 @@ def override_base_prompt(convo, new_prompt):
     return new_convo
 
 
-def run_eval(run, settings):
-    if any(k not in settings for k in ["model", "eval"]):
-        raise ValueError("`model` and `eval` must be specified in `oaieval_settings`")
-    if "record_path" in settings:
-        del settings["record_path"]
-        wandb.termwarn("Using `record_path` in `oaieval_settings` is not supported.")
+def run_eval(run):
+    model_name, override_prompt = get_model_name_prompt(run.config.model)
 
-    if custom_registry := run.config.get("custom_registry"):
-        art_path = custom_registry.download()
+    if registry := run.config.get("registry"):
+        art = run.use_artifact(registry)
+        art_path = art.download()
         shutil.copytree(art_path, "/setup/evals/evals", dirs_exist_ok=True)
 
-    if override_prompt := run.config.get("override_prompt"):
+    if override_prompt and not is_meta_eval:
         registry_path = Path("/setup/evals/evals/registry")
 
+        jsonl_args = {}
         for f in (registry_path / "evals").glob("**/*.yaml"):
             d = yaml.safe_load(f.open())
 
-            if settings["eval"] not in d:
+            if run.config.eval not in d:
                 continue
 
-            eval_id = d[settings["eval"]]["id"]
+            eval_id = d[run.config.eval]["id"]
             jsonl_args = {
                 k: v for k, v in d[eval_id]["args"].items() if str(v).endswith(".jsonl")
             }
             break
 
+        if not jsonl_args:
+            raise ValueError(
+                f"Could not find {run.config.eval} in {registry_path / 'evals'}"
+            )
+
         for k, v in jsonl_args.items():
             fpath = registry_path / "data" / v
             df = pd.read_json(fpath, lines=True)
-            df.input = df.input.apply(override_base_prompt, new_prompt=override_prompt)
+            if is_meta_eval:
+                # if it does not end with -meta, it should overwrite the modelgraded prompt?
+                pass
+            else:
+                df.input = df.input.apply(
+                    override_base_prompt, new_prompt=override_prompt
+                )
             df.to_json(fpath, lines=True, orient="records")
 
-    kwarg_settings = {k: v for k, v in settings.items() if k not in ["model", "eval"]}
-    args = [settings["model"], settings["eval"]]
-    for k, v in kwarg_settings.items():
+    oaieval_settings = run.config["oaieval_settings"]
+    if "record_path" in oaieval_settings:
+        del oaieval_settings["record_path"]
+        wandb.termwarn("Using `record_path` in `oaieval_settings` is not supported.")
+
+    args = [model_name, run.config.eval]
+    for k, v in oaieval_settings.items():
         args.append(f"--{k}={v}")
 
-    record_path = settings.get("record_path", "temp.jsonl")
+    record_path = oaieval_settings.get("record_path", "temp.jsonl")
     cmd = ["oaieval"] + args + ["--record_path", record_path]
-    subprocess.run(cmd, check=True, timeout=600)
+    subprocess.run(cmd, check=True, timeout=300)
 
 
 def get_overlapping_cols(dfs):
@@ -318,13 +331,18 @@ def get_evals_table(test_results):
         completion_fns=str(spec.get("completion_fns")),
         eval_name=spec.get("eval_name"),
     )
-    final_df["completion_cost"] = final_df.usage_total_tokens.apply(add_completion_cost)
 
-    if "override_prompt" in run.config:
-        final_df["custom_prompt"] = run.config["override_prompt"]
+    model_name, override_prompt = get_model_name_prompt(run.config.model)
+    final_df["completion_cost"] = final_df.usage_total_tokens.apply(
+        add_completion_cost, model_name=model_name
+    )
 
-    if "custom_registry" in run.config:
-        final_df["registry_version"] = run.config["custom_registry"].version
+    if override_prompt and not is_meta_eval:
+        final_df["override_prompt"] = override_prompt
+
+    if registry := run.config.get("registry"):
+        art = run.use_artifact(registry)
+        final_df["registry_version"] = art.version
 
     scary_cols = final_df.columns[
         (final_df.dtypes == "object") & ~final_df.columns.str.contains("chatml_viz")
@@ -335,34 +353,47 @@ def get_evals_table(test_results):
     return final_df
 
 
-def generate_report(run, settings):
+def get_model_name_prompt(model):
+    if isinstance(model, str):
+        art = run.use_artifact(model)
+        art_path = art.download()
+        with open(f"{art_path}/model_spec.json") as f:
+            model = json.load(f)
+
+    elif isinstance(model, dict):
+        art = wandb.Artifact("openai_evals_model", type="model")
+        model_spec_fname = "model_spec.json"
+        with open(model_spec_fname, "w") as f:
+            json.dump(run.config.model, f)
+        art.add_file(model_spec_fname)
+        run.use_artifact(art)
+
+    return model.get("name"), model.get("override_prompt")
+
+
+def generate_report(run):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    models = ["gpt-4", "gpt-3.5-turbo"]
+    model_name, override_prompt = get_model_name_prompt(run.config.model)
 
     reference_report = wr.Report.from_url(
         "https://wandb.ai/megatruong/openai-eval105/reports/gpt-3-5-turbo-manga-translation-panel--Vmlldzo0MDg2MzM2"
     )
+    blocks = []
+    for b in reference_report.blocks:
+        if isinstance(b, wr.PanelGrid):
+            rs = wr.Runset(
+                run.entity, run.project, groupby=["User"]
+            ).set_filters_with_python_expr('CreatedTimestamp >= "2020-04-17 00:00:00"')
+            b.runsets = [rs]
+        blocks.append(b)
 
-    report = wr.Report(
+    wr.Report(
         entity=run.entity,
         project=run.project,
-        title=f"{settings['model']}: {settings['eval']}",
+        title=f"{model_name}: {run.config.eval}",
         description=f"{now}",
         width="fluid",
-        blocks=reference_report.blocks,
-        # wr.H1("Leaderboard and Summary"),
-        # panel_grid_template
-        # wr.PanelGrid(
-        #     panels=[
-        #         wr.WeavePanelSummaryTable("sampling", layout={"w": 24, "h": 16})
-        #     ],
-        #     runsets=[
-        #         wr.Runset(
-        #             run.entity, run.project, name=model
-        #         ).set_filters_with_python_expr(f"model == '{model}'")
-        #         for model in models
-        #     ],
-        # ),
+        blocks=blocks,
     ).save()
 
 
@@ -375,20 +406,27 @@ def get_spec(test_results):
 
 
 def get_final_report(test_results):
-    return test_results.iloc[1, 1]
+    if not isinstance(final_report := test_results.iloc[1, 1], dict):
+        final_report = {"final_report": final_report}
+    return final_report
 
 
-def override_base_prompt(convo, new_prompt):
-    for i, msg in enumerate(convo):
-        if msg.get("role") != "system":
+def add_completion_cost(n_tokens, model_name):
+    cost_per_1k_tokens = {
+        "gpt-4": 0.06,
+        "gpt-3.5-turbo": 0.002,
+        "ada": 0.0016,
+        "babbage": 0.0024,
+        "curie": 0.0120,
+        "davinci": 0.12,
+    }
+
+    cost = 0
+    for k, v in cost_per_1k_tokens.items():
+        if k in model_name:
+            cost = v / 1000 * n_tokens
             break
-
-    new_convo = [{"role": "system", "content": new_prompt}] + convo[i:]
-    return new_convo
-
-
-def add_completion_cost(n_tokens, cost_per_1k_tokens=0.06):
-    return (n_tokens // 1000 + 1) * cost_per_1k_tokens
+    return cost
 
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -399,16 +437,14 @@ if p.is_file():
         config = yaml.safe_load(f)
 
 with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run:
-    settings = run.config["eval_settings"]
-    run_eval(run, settings)
-
+    is_meta_eval = run.config.eval.endswith("-meta")
+    run_eval(run)
     test_results = get_test_results()
     spec = get_spec(test_results)
     final_report = get_final_report(test_results)
-    if not isinstance(final_report, dict):
-        final_report = {"final_report": final_report}
     evals = get_evals_table(test_results)
     total_completion_cost = evals.completion_cost.sum()
+    tokens_generated = evals.usage_total_tokens.sum()
 
     run.log(
         {
@@ -417,11 +453,12 @@ with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run
                 data_table=wandb.Table(dataframe=evals),
                 fields={
                     "metric": "sacrebleu_sentence_score",
-                    "color": "custom_prompt",
+                    "color": "override_prompt",
                     "xaxis": "registry_version",
                     "hover": "markdown",
                 },
             ),
+            "tokens_generated": tokens_generated,
             "total_completion_cost": total_completion_cost,
             **final_report,
         }
@@ -430,4 +467,4 @@ with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run
     art.add_file("temp.jsonl")
     run.log_artifact(art)
 
-    generate_report(run, settings)
+    generate_report(run)
