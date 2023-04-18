@@ -1,21 +1,21 @@
 name: Build Jobs
 on: [workflow_dispatch, push]
 jobs:
-  find-directories:
-    runs-on: ubuntu-latest
-    outputs:
-      dirs: ${{ steps.get-dirs.outputs.dirs }}
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
+  # find-directories:
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     dirs: ${{ steps.get-dirs.outputs.dirs }}
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v2
 
-      - name: List Directories
-        run: |
-          directories=$(find . -maxdepth 1 -type d -not -path '*/\.*' -printf '%f\n')
-          echo "$directories"
+  #     - name: List Directories
+  #       run: |
+  #         directories=$(find . -maxdepth 1 -type d -not -path '*/\.*' -printf '%f\n')
+  #         echo "$directories"
 
   repeat-steps:
-    needs: find-directories
+    # needs: find-directories
     strategy:
       matrix:
         # dir: ${{ fromJson(steps.list-directories.outputs.directories) }}
