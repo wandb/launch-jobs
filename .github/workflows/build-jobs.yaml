@@ -1,0 +1,21 @@
+name: Build Jobs
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Build everything
+        run: |
+          docker build -t openai-eval jobs/openai_eval && \
+          docker tag openai-eval itsandrewtruong/openai-eval:latest && \
+          docker push itsandrewtruong/openai-eval && \
+          docker run --env-file /Users/andrewtruong/.wandb_launch/env.list \
+                      -e WANDB_PROJECT=openai-eval110 \
+                      -e WANDB_DOCKER=itsandrewtruong/openai-eval:latest \
+                      --rm --net=host itsandrewtruong/openai-eval:latest
