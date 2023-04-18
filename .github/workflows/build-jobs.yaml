@@ -1,38 +1,49 @@
 name: Build Jobs
 on: [workflow_dispatch, push]
 jobs:
-  setup:
+  find-directories:
     runs-on: ubuntu-latest
     outputs:
       dirs: ${{ steps.get-dirs.outputs.dirs }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Get Directories
         id: get-dirs
         run: |
-          find jobs -type d -mindepth 1 -maxdepth 1 > dirs.txt
-          echo ${{ steps.get-dirs.outputs.dirs }}
+          dirs=$(find /path/to/directory -type d -mindepth 1 -maxdepth 1)
+          echo "::set-output name=dirs::${dirs}"
 
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: setup
+  repeat-steps:
+    needs: find-directories
     strategy:
       matrix:
-        dir: ${{ fromJson(needs.setup.outputs.dirs) }}
+        dir: ${{ fromJson(needs.find-directories.outputs.dirs) }}
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
-      - name: Set Directory to ${{ matrix.dir }}
+      - name: Set Directory
         run: |
           cd ${{ matrix.dir }}
 
-      - name: Test
+      - name: Step 1
         run: |
-          pwd
+          # Execute step 1 here
+
+      - name: Step 2
+        run: |
+          # Execute step 2 here
+
+      - name: Step 3
+        run: |
+          # Execute step 3 here
+
+      - name: Go Back to Root
+        run: |
+          cd ..
 
       # - name: Docker login
       #   run: |
