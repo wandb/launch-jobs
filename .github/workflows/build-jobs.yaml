@@ -19,7 +19,8 @@ jobs:
     needs: find-directories
     strategy:
       matrix:
-        dir: ${{ needs.find-directories.outputs.dirs }}
+        # dir: ${{ needs.find-directories.outputs.dirs }}
+        dir: ["jobs/hello_world", "jobs/http_webhook"]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
