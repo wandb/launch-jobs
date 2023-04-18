@@ -4,27 +4,25 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJson(steps.get-matrix.outputs.matrix) }}
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Get matrix
-        id: get-matrix
+      # Use find command to get a list of all directories in the path
+      - name: Find Directories
+        id: dirs
         run: |
-          for dir in jobs/*; do
-            if [ -d "$dir" ]; then
-              matrix["$dir"]="\"wandb-${dir##*/}\": {\"job-name\": \"${dir##*/}\", \"job-directory\": \"$dir\"}"
-            fi
-          done
-          echo "{\"job-info\": {${matrix[*]}}}" > matrix.json
-          echo "::set-output name=matrix::$(cat matrix.json)"
+          find /path/to/directory -type d -mindepth 1 -maxdepth 1 > dirs.txt
 
-      - name: Do something with the job info
+      # Use a for loop to execute the steps for each directory
+      - name: Repeat Steps for Directories
         run: |
-          echo "Job Name: ${{ matrix.job-info.job-name }}"
-          echo "Job Directory: ${{ matrix.job-info.job-directory }}"
+          while read -r dir; do
+            cd $dir
+            # Execute the steps here
+            echo "Executing steps for $dir"
+            cd ..
+          done < dirs.txt
 
       # - name: Docker login
       #   run: |
