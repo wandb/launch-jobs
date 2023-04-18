@@ -26,29 +26,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
 
+      - name: Docker login
+        run: |
+          docker login -u itsandrewtruong -p "${{ secrets.DOCKERHUB_TOKEN }}"
+
       - name: Set Directory
         run: |
           cd ${{ matrix.dir }}
 
-      - name: Step 1
+      - name: Build and push
         run: |
-          # Execute step 1 here
-
-      - name: Step 2
-        run: |
-          # Execute step 2 here
-
-      - name: Step 3
-        run: |
-          # Execute step 3 here
-
-      - name: Go Back to Root
-        run: |
-          cd ..
-
-      # - name: Docker login
-      #   run: |
-      #     docker login -u itsandrewtruong -p "${{ secrets.DOCKERHUB_TOKEN }}"
+          docker buildx build --platform linux/amd64,linux/arm64 --push -t itsandrewtruong/${{ matrix.dir }}:gh-test ${{ matrix.dir }}
 
       # - name: Build everything
       #   run: |
