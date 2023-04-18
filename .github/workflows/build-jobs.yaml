@@ -11,7 +11,7 @@ jobs:
 
       - name: List Directories
         run: |
-          directories=$(find . -maxdepth 1 -type d -not -path '*/\.*' -printf '%f\n')
+          directories=$(ls jobs | jq -Rsc 'split("\n")[:-1]')
           echo "$directories"
 
   repeat-steps:
