@@ -36,8 +36,7 @@ jobs:
 
       - name: Setup Docker Buildx
         run: |
-          docker buildx create --name bobthebuilder --platform linux/amd64,linux/arm64 && \
-          docker buildx use bobthebuilder
+          docker buildx create --name bobthebuilder --platform linux/amd64,linux/arm64 --use
 
       - name: Build and push
         run: |
