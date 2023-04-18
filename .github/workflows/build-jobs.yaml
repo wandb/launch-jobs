@@ -15,7 +15,7 @@ jobs:
   #         echo "$directories"
 
   repeat-steps:
-    # needs: find-directories
+    needs: find-directories
     strategy:
       matrix:
         # dir: ${{ fromJson(steps.list-directories.outputs.directories) }}
@@ -32,10 +32,6 @@ jobs:
       - name: Setup Docker Buildx
         run: |
           docker buildx create --name bobthebuilder --platform linux/amd64,linux/arm64 --use
-
-      - name: Set Directory
-        run: |
-          cd ${{ matrix.dir }}
 
       - name: Build and push
         run: |
