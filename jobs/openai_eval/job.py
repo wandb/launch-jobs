@@ -456,7 +456,8 @@ def add_completion_cost(n_tokens, model_name):
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-p = Path(os.getenv("_WANDB_CONFIG_FILENAME"))
+config = {}
+p = Path(os.getenv("_WANDB_CONFIG_FILENAME", ""))
 if p.is_file():
     with p.open() as f:
         config = yaml.safe_load(f)

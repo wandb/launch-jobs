@@ -6,8 +6,9 @@ RUN apt update && \
     apt install git-lfs && \
     git lfs install
 RUN pip install -r requirements.txt
-RUN git clone https://github.com/openai/evals.git ./evals && \
-    pip install -U -e ./evals && \
+# RUN git clone https://github.com/openai/evals.git ./evals && \
+COPY evals ./evals
+RUN pip install -U -e ./evals && \
     cd evals && git lfs fetch --all && git lfs pull
 
 WORKDIR /launch
