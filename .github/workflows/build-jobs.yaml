@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         # dir: ${{ fromJson(steps.list-directories.outputs.directories) }}
-        dir: ["jobs/hello_world", "jobs/http_webhook"]
+        dir: ["jobs/openai_eval"]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -40,11 +40,3 @@ jobs:
       - name: Build and push
         run: |
           docker buildx build --platform linux/amd64,linux/arm64 --push -t itsandrewtruong/${{ matrix.dir }}:gh-test .
-      # - name: Build everything
-      #   run: |
-      #     docker build -t openai-eval jobs/openai_eval
-
-      # - name: Tag and push
-      #   run: |
-      #     docker tag openai-eval itsandrewtruong/openai-eval-gh:latest && \
-      #     docker push itsandrewtruong/openai-eval-gh
