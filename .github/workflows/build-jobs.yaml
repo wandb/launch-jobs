@@ -28,7 +28,10 @@ jobs:
       - name: Docker login
         run: |
           docker login -u itsandrewtruong -p "${{ secrets.DOCKERHUB_TOKEN }}"
-
+      - name: test
+        run: |
+          echo $(pwd)
+          echo $(ls pwd)
       - name: Set Directory
         run: |
           cd ${{ matrix.dir }}
@@ -36,6 +39,7 @@ jobs:
       - name: test
         run: |
           echo $(pwd)
+          echo $(ls pwd)
 
       - name: Setup Docker Buildx
         run: |
