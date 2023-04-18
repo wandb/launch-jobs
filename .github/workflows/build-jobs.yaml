@@ -34,6 +34,11 @@ jobs:
         run: |
           cd ${{ matrix.dir }}
 
+      - name: Setup Docker Buildx
+        run: |
+          docker buildx create --name bobthebuilder --platform linux/amd64,linux/arm64 && \
+          docker buildx use bobthebuilder && \
+
       - name: Build and push
         run: |
           docker buildx build --platform linux/amd64,linux/arm64 --push -t itsandrewtruong/${{ matrix.dir }}:gh-test ${{ matrix.dir }}
