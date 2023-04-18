@@ -8,6 +8,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Get matrix
+        id: get-matrix
+        run: |
+          for dir in jobs/*; do
+            if [ -d "$dir" ]; then
+              matrix["$dir"]="\"wandb-${dir##*/}\": {\"job-name\": \"${dir##*/}\", \"job-directory\": \"$dir\"}"
+            fi
+          done
+          echo "{\"job-info\": {${matrix[*]}}}" > matrix.json
+          echo "::set-output name=matrix::$(cat matrix.json)"
+          
+      - name: Do something with the job info
+        run: |
+          echo "Job Name: ${{ matrix.job-info.job-name }}"
+          echo "Job Directory: ${{ matrix.job-info.job-directory }}"
+
       - name: Docker login
         run: |
           docker login -u itsandrewtruong -p "${{ secrets.DOCKERHUB_TOKEN }}"
