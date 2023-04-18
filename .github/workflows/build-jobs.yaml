@@ -20,21 +20,21 @@ jobs:
           done
           echo "{\"job-info\": {${matrix[*]}}}" > matrix.json
           echo "::set-output name=matrix::$(cat matrix.json)"
-          
+
       - name: Do something with the job info
         run: |
           echo "Job Name: ${{ matrix.job-info.job-name }}"
           echo "Job Directory: ${{ matrix.job-info.job-directory }}"
 
-      - name: Docker login
-        run: |
-          docker login -u itsandrewtruong -p "${{ secrets.DOCKERHUB_TOKEN }}"
+      # - name: Docker login
+      #   run: |
+      #     docker login -u itsandrewtruong -p "${{ secrets.DOCKERHUB_TOKEN }}"
 
-      - name: Build everything
-        run: |
-          docker build -t openai-eval jobs/openai_eval
+      # - name: Build everything
+      #   run: |
+      #     docker build -t openai-eval jobs/openai_eval
 
-      - name: Tag and push
-        run: |
-          docker tag openai-eval itsandrewtruong/openai-eval-gh:latest && \
-          docker push itsandrewtruong/openai-eval-gh
+      # - name: Tag and push
+      #   run: |
+      #     docker tag openai-eval itsandrewtruong/openai-eval-gh:latest && \
+      #     docker push itsandrewtruong/openai-eval-gh
