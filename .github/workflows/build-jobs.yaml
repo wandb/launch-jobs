@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         # dir: ${{ fromJson(steps.list-directories.outputs.directories) }}
-        dir: ["jobs/openai_eval"]
+        dir: ["openai_eval"]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -36,4 +36,4 @@ jobs:
       - name: Build and push
         run: |
           echo $(ls $(pwd))
-          docker buildx build --platform linux/amd64,linux/arm64 --push -t itsandrewtruong/${{ matrix.dir }}:gh-test ${{ matrix.dir }}
+          docker buildx build --platform linux/amd64,linux/arm64 --push -t itsandrewtruong/$jobs_{{ matrix.dir }}:gh-test jobs/${{ matrix.dir }}
