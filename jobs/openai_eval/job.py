@@ -384,6 +384,9 @@ def get_model_name_prompt(model):
         art.add_file(model_spec_fname)
         run.use_artifact(art)
 
+    run.summary["model"] = model.get("name")
+    run.summary["override_prompt"] = model.get("override_prompt")
+
     return model.get("name"), model.get("override_prompt")
 
 
@@ -462,9 +465,12 @@ with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run
     is_meta_eval = run.config.eval.endswith("-meta")
     run_eval(run)
     test_results = get_test_results()
+
     spec = get_spec(test_results)
+    run.summary["spec"] = spec
     final_report = get_final_report(test_results)
     evals = get_evals_table(test_results)
+
     total_completion_cost = evals.completion_cost.sum()
     tokens_generated = evals.usage_total_tokens.sum()
 
