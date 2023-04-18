@@ -28,18 +28,6 @@ jobs:
       - name: Docker login
         run: |
           docker login -u itsandrewtruong -p "${{ secrets.DOCKERHUB_TOKEN }}"
-      - name: test
-        run: |
-          echo $(pwd)
-          echo $(ls pwd)
-      - name: Set Directory
-        run: |
-          cd ${{ matrix.dir }}
-
-      - name: test
-        run: |
-          echo $(pwd)
-          echo $(ls pwd)
 
       - name: Setup Docker Buildx
         run: |
@@ -47,4 +35,5 @@ jobs:
 
       - name: Build and push
         run: |
-          docker buildx build --platform linux/amd64,linux/arm64 --push -t itsandrewtruong/${{ matrix.dir }}:gh-test .
+          echo $(ls $(pwd))
+          docker buildx build --platform linux/amd64,linux/arm64 --push -t itsandrewtruong/${{ matrix.dir }}:gh-test ${{ matrix.dir }}
