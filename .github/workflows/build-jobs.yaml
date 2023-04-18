@@ -15,7 +15,7 @@ jobs:
   #         echo "$directories"
 
   repeat-steps:
-    needs: find-directories
+    # needs: find-directories
     strategy:
       matrix:
         # dir: ${{ fromJson(steps.list-directories.outputs.directories) }}
