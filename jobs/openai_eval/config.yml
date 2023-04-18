@@ -1,4 +1,7 @@
+# eval: joke-fruits-meta
+# eval: wandbot-meta
 eval: aba_mrpc_true_false
+# model: "megatruong/openai-eval110/openai_evals_model:v0"
 model:
   name: gpt-3.5-turbo
   override_prompt: You are a LawStudentGPT.  Answer True or False based on the law.

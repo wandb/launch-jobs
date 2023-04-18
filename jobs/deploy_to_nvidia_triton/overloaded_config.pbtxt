@@ -1,0 +1,18 @@
+version_policy {
+  specific {
+    versions: 0
+  }
+}
+max_batch_size: 32
+input {
+  name: "conv1"
+  data_type: TYPE_FP32
+  dims: 3
+  dims: 28
+  dims: 28
+}
+output {
+  name: "fc"
+  data_type: TYPE_FP32
+  dims: 1
+}

@@ -7,5 +7,5 @@ WORKDIR /launch
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
-COPY deploy_to_nvidia_triton.py config_pytorch.yml config_tensorflow.yml ./
-ENTRYPOINT ["python3", "deploy_to_nvidia_triton.py"]
+COPY job.py config_pytorch.yml config_tensorflow.yml ./
+ENTRYPOINT ["python3", "job.py"]

@@ -11,6 +11,7 @@ Outputs:
 """
 
 import os
+from pathlib import Path
 
 import yaml
 from github import Github
@@ -20,10 +21,9 @@ import wandb
 
 # Used to load example configs from wandb jobs repo.
 # Is there a better way to handle this?
-config = {}
-cfg = os.getenv("WANDB_JOBS_REPO_CONFIG")
-if cfg:
-    with open(cfg) as f:
+p = Path("config.yml")
+if p.is_file():
+    with open(p) as f:
         config = yaml.safe_load(f)
 
 with wandb.init(config=config, job_type="webhook") as run:

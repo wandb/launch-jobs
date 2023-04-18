@@ -5,7 +5,7 @@ Deploy a model from W&B Artifacts to NVIDIA Triton Inference Server
 ## 1. Build and run the Triton server container
 
 ```
-docker build -t tritonserver-wandb jobs/nvidia-triton/server && \
+docker build -t tritonserver-wandb jobs/deploy_to_nvidia_triton/server && \
 docker run \
   -v $HOME/.aws:/root/.aws:ro \
   -p 8000:8000 \
@@ -16,7 +16,7 @@ docker run \
 ## 2. Build and run the deployer container, which loads a model from W&B Artifacts into NVIDIA Triton Inference Server
 
 ```
-docker build -t $WANDB_NAME jobs/nvidia-triton/deployer && \
+docker build -t $WANDB_NAME jobs/deploy_to_nvidia_triton/deployer && \
 docker run \
    -v $HOME/.aws:/root/.aws:ro \
    -e WANDB_API_KEY=$WANDB_API_KEY \
