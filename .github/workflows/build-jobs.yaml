@@ -18,7 +18,7 @@ jobs:
     needs: find-directories
     strategy:
       matrix:
-        dir: ${{ fromJson(steps.list-directories.outputs.directories) }}
+        dir: ${{ fromJson(find-directories.outputs.dirs) }}
         # dir: ["openai_eval"]
     runs-on: ubuntu-latest
     steps:
