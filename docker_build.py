@@ -50,7 +50,7 @@ WRITE_TAGS = [GIT_SHA_DIRTY, GIT_BRANCH_DIRTY]
 
 
 def qualified_image_name(image: str, tag: str) -> str:
-    return f"{REGISTRY}/{image}:{tag}"
+    return os.path.join(REGISTRY, f"{image}:{tag}")
 
 
 def _build_common(
