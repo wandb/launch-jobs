@@ -37,7 +37,7 @@ jobs:
 
       - name: Build and push
         run: |
-          docker buildx build --cache-from type=gha --cache-to type=gha --platform linux/amd64,linux/arm64 --push -t wandb/job_${{ matrix.dir }}:$TAG jobs/${{ matrix.dir }}
+          docker buildx build --cache-from type=gha --cache-to type=gha --platform linux/amd64,linux/arm64 --push -t wandb/job_${{ matrix.dir }}:gh-test jobs/${{ matrix.dir }}
 
       - name: Wipe the cache
         run: |
