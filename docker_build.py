@@ -203,7 +203,7 @@ if __name__ == "__main__":
             extra_write_tags.append("latest")
 
         build(
-            image=f"wandb/{image}",
+            image=f"wandb/job_{image}",
             context_path=os.path.join(repo, "jobs", image),
             dockerfile=os.path.join(repo, "jobs", image, "Dockerfile"),
             cache_from_image=f"wandb/{image}",
