@@ -22,6 +22,7 @@ jobs:
   repeat-steps:
     needs: find-directories
     strategy:
+      max-parallel: 1
       matrix:
         dir: ${{ fromJson(needs.find-directories.outputs.dirs) }}
     runs-on: ubuntu-latest
