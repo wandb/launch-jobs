@@ -194,6 +194,9 @@ if __name__ == "__main__":
         if not os.path.isdir(os.path.join(repo, "jobs", image)):
             continue
 
+        if not os.path.exists(os.path.join(repo, "jobs", image, "Dockerfile")):
+            continue
+
         build(
             image=f"wandb/{image}",
             context_path=os.path.join(repo, "jobs", image),
