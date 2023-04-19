@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.4
 
-FROM python:3.9-slim
+FROM python:3.9-buster
 WORKDIR /launch
 
 COPY --link requirements.txt ./
