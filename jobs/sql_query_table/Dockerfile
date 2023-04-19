@@ -1,4 +1,4 @@
-FROM python:3.9-buster
+FROM python:3.9-slim
 WORKDIR /launch
 
 COPY --link requirements.txt ./
