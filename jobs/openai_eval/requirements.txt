@@ -1,4 +1,3 @@
 wandb
 openai
 evals
-idna

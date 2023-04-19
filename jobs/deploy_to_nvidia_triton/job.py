@@ -12,6 +12,7 @@ from google.protobuf import json_format, text_format
 from tritonclient.grpc import model_config_pb2
 
 import wandb
+from pathlib import Path
 
 # def config_pbtxt_to_dict(fname):
 #     with open(fname) as f:
@@ -76,10 +77,9 @@ valid_frameworks = ["pytorch", "tensorflow"]
 
 # Used to load example configs from wandb jobs repo.
 # Is there a better way to handle this?
-config = {}
-cfg = os.getenv("WANDB_JOBS_REPO_CONFIG")
-if cfg:
-    with open(cfg) as f:
+p = Path("config_pytorch.yml")
+if p.is_file():
+    with open(p) as f:
         config = yaml.safe_load(f)
 
 with wandb.init(config=config, job_type="deploy_model") as run:
@@ -153,4 +153,3 @@ with wandb.init(config=config, job_type="deploy_model") as run:
             wandb.termerror(f"Failed to load model {model_name}")
 
     wandb_termlog_heading("Finished deploying to Triton")
-    run.log_code()

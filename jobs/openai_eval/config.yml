@@ -1,3 +1,10 @@
-model: gpt-4
+# eval: joke-fruits-meta
+# eval: wandbot-meta
 eval: aba_mrpc_true_false
-max_samples: 4
+# model: "megatruong/openai-eval110/openai_evals_model:v0"
+model:
+  name: gpt-3.5-turbo
+  override_prompt: You are a LawStudentGPT.  Answer True or False based on the law.
+registry: "wandb/jobs/openai_evals_registry:latest"
+oaieval_settings:
+  max_samples: 10
