@@ -1,8 +1,10 @@
+# syntax=docker/dockerfile:1.4
+
 FROM python:3.9-buster
 WORKDIR /launch
 
-COPY requirements.txt ./
+COPY --link requirements.txt ./
 RUN pip install -r requirements.txt
 
-COPY job.py config.yml ./
+COPY --link job.py config.yml ./
 ENTRYPOINT ["python", "job.py"]
