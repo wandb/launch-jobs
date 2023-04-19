@@ -197,9 +197,15 @@ if __name__ == "__main__":
         if not os.path.exists(os.path.join(repo, "jobs", image, "Dockerfile")):
             continue
 
+        extra_write_tags = []
+
+        if GIT_BRANCH_DIRTY == "master":
+            extra_write_tags.append("latest")
+
         build(
             image=f"wandb/{image}",
             context_path=os.path.join(repo, "jobs", image),
             dockerfile=os.path.join(repo, "jobs", image, "Dockerfile"),
             cache_from_image=f"wandb/{image}",
+            extra_write_tags=extra_write_tags,
         )
