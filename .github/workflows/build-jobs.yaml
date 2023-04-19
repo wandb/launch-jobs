@@ -40,7 +40,7 @@ jobs:
       - name: Build and push
         run: |
           echo $(ls $(pwd))
-          docker buildx build --cache-from type=gha --cache-to type=gha --platform linux/amd64,linux/arm64 --push -t $DOCKER_USER/${{ matrix.dir }}:$TAG/${{ matrix.dir }}
+          docker buildx build --cache-from type=gha --cache-to type=gha --platform linux/amd64,linux/arm64 --push -t $DOCKER_USER/${{ matrix.dir }}:$TAG jobs/${{ matrix.dir }}
 
       - name: Wipe the cache
         run: |
