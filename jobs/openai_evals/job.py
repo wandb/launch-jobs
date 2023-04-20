@@ -1,6 +1,8 @@
 import datetime
 import json
 import os
+import re
+import shlex
 import shutil
 import subprocess
 from functools import reduce
@@ -8,11 +10,12 @@ from pathlib import Path
 
 import openai
 import pandas as pd
+import wandb
 import wandb.apis.reports as wr
 import yaml
-import shlex
 
-import wandb
+
+EVALS_REPO_PATH = "/setup/evals"
 
 
 def expand(df, col):
@@ -221,10 +224,10 @@ def run_eval(run):
     if registry := run.config.get("registry"):
         art = run.use_artifact(registry)
         art_path = art.download()
-        shutil.copytree(art_path, "/setup/evals/evals", dirs_exist_ok=True)
+        shutil.copytree(art_path, f"{EVALS_REPO_PATH}/evals", dirs_exist_ok=True)
 
     if override_prompt and not is_meta_eval:
-        registry_path = Path("/setup/evals/evals/registry")
+        registry_path = Path(f"{EVALS_REPO_PATH}/evals/registry")
 
         jsonl_args = {}
         for f in (registry_path / "evals").glob("**/*.yaml"):
@@ -397,7 +400,7 @@ def generate_report(run):
     template_url = (
         "https://wandb.ai/wandb/jobs/reports/Alt-Report-Template--Vmlldzo0MTIwOTUx"
     )
-    if run.config.eval.contains("manga"):
+    if run.config.eval.startswith("manga"):
         template_url = "https://wandb.ai/wandb/jobs/reports/Baseline-Report-Template--Vmlldzo0MDk5NTUz"
 
     reference_report = wr.Report.from_url(template_url)
@@ -458,15 +461,37 @@ def add_completion_cost(n_tokens, model_name):
     return cost
 
 
+def check_for_valid_eval(run):
+    _eval = run.config.eval
+
+    pattern = r"\w+(?:\.|-)v\d$"
+
+    valid_evals = []
+    alternate_evals = {}
+    for p in Path(f"{EVALS_REPO_PATH}/evals/registry/evals").glob("**/*.yaml"):
+        with p.open() as f:
+            d = yaml.safe_load(f)
+        keys = [k for k in d.keys() if not re.search(pattern, k)]
+        valid_evals.extend(keys)
+
+        possibly_confused_name = p.stem
+        alternate_evals[possibly_confused_name] = keys[0]
+
+    if _eval not in valid_evals:
+        if _eval not in alternate_evals:
+            raise ValueError(
+                f"Invalid eval: {_eval}.  Please choose from: {valid_evals}"
+            )
+        else:
+            # User confused the name of the eval with the name of the yaml
+            run.config.eval = alternate_evals[_eval]
+
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-config = {}
-p = Path(os.getenv("_WANDB_CONFIG_FILENAME", ""))
-if p.is_file():
-    with p.open() as f:
-        config = yaml.safe_load(f)
 
-with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run:
+with wandb.init(settings=wandb.Settings(disable_git=True)) as run:
+    check_for_valid_eval(run)
     is_meta_eval = run.config.eval.endswith("-meta")
     run_eval(run)
     test_results = get_test_results()
@@ -487,7 +512,7 @@ with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run
         }
     )
 
-    if run.config.eval.contains("manga"):
+    if run.config.eval.startswith("manga"):
         run.log(
             {
                 "evals": wandb.plot_table(
@@ -502,6 +527,8 @@ with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run
                 ),
             }
         )
+    else:
+        run.log({"evals_table": evals})
 
     art = wandb.Artifact("results", type="results")
     art.add_file("temp.jsonl")
