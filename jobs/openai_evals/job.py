@@ -1,6 +1,8 @@
 import datetime
 import json
 import os
+import re
+import shlex
 import shutil
 import subprocess
 from functools import reduce
@@ -8,11 +10,12 @@ from pathlib import Path
 
 import openai
 import pandas as pd
+import wandb
 import wandb.apis.reports as wr
 import yaml
-import shlex
 
-import wandb
+
+EVALS_REPO_PATH = "/setup/evals"
 
 
 def expand(df, col):
@@ -217,32 +220,31 @@ def override_base_prompt(convo, new_prompt):
 
 def run_eval(run):
     model_name, override_prompt = get_model_name_prompt(run.config.model)
+    _eval = get_correct_eval_name(run)
 
     if registry := run.config.get("registry"):
         art = run.use_artifact(registry)
         art_path = art.download()
-        shutil.copytree(art_path, "/setup/evals/evals", dirs_exist_ok=True)
+        shutil.copytree(art_path, f"{EVALS_REPO_PATH}/evals", dirs_exist_ok=True)
 
     if override_prompt and not is_meta_eval:
-        registry_path = Path("/setup/evals/evals/registry")
+        registry_path = Path(f"{EVALS_REPO_PATH}/evals/registry")
 
         jsonl_args = {}
         for f in (registry_path / "evals").glob("**/*.yaml"):
             d = yaml.safe_load(f.open())
 
-            if run.config.eval not in d:
+            if _eval not in d:
                 continue
 
-            eval_id = d[run.config.eval]["id"]
+            eval_id = d[_eval]["id"]
             jsonl_args = {
                 k: v for k, v in d[eval_id]["args"].items() if str(v).endswith(".jsonl")
             }
             break
 
         if not jsonl_args:
-            raise ValueError(
-                f"Could not find {run.config.eval} in {registry_path / 'evals'}"
-            )
+            raise ValueError(f"Could not find {_eval} in {registry_path / 'evals'}")
 
         for k, v in jsonl_args.items():
             fpath = registry_path / "data" / v
@@ -261,7 +263,7 @@ def run_eval(run):
         del oaieval_settings["record_path"]
         wandb.termwarn("Using `record_path` in `oaieval_settings` is not supported.")
 
-    args = [model_name, run.config.eval]
+    args = [model_name, _eval]
     valid_keys = [
         "extra_eval_params",
         "max_samples",
@@ -393,10 +395,15 @@ def get_model_name_prompt(model):
 def generate_report(run):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     model_name, override_prompt = get_model_name_prompt(run.config.model)
+    _eval = get_correct_eval_name(run)
 
-    reference_report = wr.Report.from_url(
-        "https://wandb.ai/wandb/jobs/reports/Baseline-Report-Template--Vmlldzo0MDk5NTUz"
+    template_url = (
+        "https://wandb.ai/wandb/jobs/reports/Alt-Report-Template--Vmlldzo0MTIwOTUx"
     )
+    if _eval.startswith("manga"):
+        template_url = "https://wandb.ai/wandb/jobs/reports/Baseline-Report-Template--Vmlldzo0MDk5NTUz"
+
+    reference_report = wr.Report.from_url(template_url)
     blocks = []
     for b in reference_report.blocks:
         if isinstance(b, wr.PanelGrid):
@@ -406,7 +413,7 @@ def generate_report(run):
     wr.Report(
         entity=run.entity,
         project=run.project,
-        title=f"{model_name}: {run.config.eval}",
+        title=f"OpenAI Evals Profiling Report: {model_name}: {_eval}",
         description=f"{now}",
         width="fluid",
         blocks=blocks,
@@ -454,6 +461,35 @@ def add_completion_cost(n_tokens, model_name):
     return cost
 
 
+def get_correct_eval_name(run):
+    # a bit annoying to have to do this...
+
+    _eval = run.config.eval
+
+    pattern = r"\w+(?:\.|-)v\d$"
+
+    valid_evals = []
+    alternate_evals = {}
+    for p in Path(f"{EVALS_REPO_PATH}/evals/registry/evals").glob("**/*.yaml"):
+        with p.open() as f:
+            d = yaml.safe_load(f)
+        keys = [k for k in d.keys() if not re.search(pattern, k)]
+        valid_evals.extend(keys)
+
+        possibly_confused_name = p.stem
+        alternate_evals[possibly_confused_name] = keys[0]
+
+    if _eval not in valid_evals:
+        if _eval not in alternate_evals:
+            raise ValueError(
+                f"Invalid eval: {_eval}.  Please choose from: {valid_evals}"
+            )
+        # User confused the name of the eval withthe name of the yaml
+        _eval = alternate_evals[_eval]
+
+    return _eval
+
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 config = {}
@@ -463,7 +499,8 @@ if p.is_file():
         config = yaml.safe_load(f)
 
 with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run:
-    is_meta_eval = run.config.eval.endswith("-meta")
+    _eval = get_correct_eval_name(run)
+    is_meta_eval = _eval.endswith("-meta")
     run_eval(run)
     test_results = get_test_results()
 
@@ -477,21 +514,30 @@ with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run
 
     run.log(
         {
-            "evals": wandb.plot_table(
-                vega_spec_name="megatruong/test",
-                data_table=wandb.Table(dataframe=evals),
-                fields={
-                    "metric": "sacrebleu_sentence_score",
-                    "color": "override_prompt",
-                    "xaxis": "registry_version",
-                    "hover": "markdown",
-                },
-            ),
             "tokens_generated": tokens_generated,
             "total_completion_cost": total_completion_cost,
             **final_report,
         }
     )
+
+    if _eval.startswith("manga"):
+        run.log(
+            {
+                "evals": wandb.plot_table(
+                    vega_spec_name="megatruong/test",
+                    data_table=wandb.Table(dataframe=evals),
+                    fields={
+                        "metric": "sacrebleu_sentence_score",
+                        "color": "override_prompt",
+                        "xaxis": "registry_version",
+                        "hover": "markdown",
+                    },
+                ),
+            }
+        )
+    else:
+        run.log({"evals_table": evals})
+
     art = wandb.Artifact("results", type="results")
     art.add_file("temp.jsonl")
     run.log_artifact(art)

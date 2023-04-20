@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.4
 
-FROM python:3.9-buster
+FROM python:3.9-slim
 
 WORKDIR /setup
 COPY --link requirements.txt ./
-RUN apt update && \
-    apt install git-lfs && \
-    git lfs install
+RUN apt update
+RUN apt install gcc git git-lfs -y
+RUN git lfs install
 RUN pip install -r requirements.txt
 RUN git clone https://github.com/openai/evals.git ./evals
 # extra metrics
