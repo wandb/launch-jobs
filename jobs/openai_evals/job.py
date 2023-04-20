@@ -394,9 +394,13 @@ def generate_report(run):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     model_name, override_prompt = get_model_name_prompt(run.config.model)
 
-    reference_report = wr.Report.from_url(
-        "https://wandb.ai/wandb/jobs/reports/Baseline-Report-Template--Vmlldzo0MDk5NTUz"
+    template_url = (
+        "https://wandb.ai/wandb/jobs/reports/Alt-Report-Template--Vmlldzo0MTIwOTUx"
     )
+    if run.config.eval.contains("manga"):
+        template_url = "https://wandb.ai/wandb/jobs/reports/Baseline-Report-Template--Vmlldzo0MDk5NTUz"
+
+    reference_report = wr.Report.from_url(template_url)
     blocks = []
     for b in reference_report.blocks:
         if isinstance(b, wr.PanelGrid):
@@ -406,7 +410,7 @@ def generate_report(run):
     wr.Report(
         entity=run.entity,
         project=run.project,
-        title=f"{model_name}: {run.config.eval}",
+        title=f"OpenAI Evals Profiling Report: {model_name}: {run.config.eval}",
         description=f"{now}",
         width="fluid",
         blocks=blocks,
@@ -477,21 +481,28 @@ with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run
 
     run.log(
         {
-            "evals": wandb.plot_table(
-                vega_spec_name="megatruong/test",
-                data_table=wandb.Table(dataframe=evals),
-                fields={
-                    "metric": "sacrebleu_sentence_score",
-                    "color": "override_prompt",
-                    "xaxis": "registry_version",
-                    "hover": "markdown",
-                },
-            ),
             "tokens_generated": tokens_generated,
             "total_completion_cost": total_completion_cost,
             **final_report,
         }
     )
+
+    if run.config.eval.contains("manga"):
+        run.log(
+            {
+                "evals": wandb.plot_table(
+                    vega_spec_name="megatruong/test",
+                    data_table=wandb.Table(dataframe=evals),
+                    fields={
+                        "metric": "sacrebleu_sentence_score",
+                        "color": "override_prompt",
+                        "xaxis": "registry_version",
+                        "hover": "markdown",
+                    },
+                ),
+            }
+        )
+
     art = wandb.Artifact("results", type="results")
     art.add_file("temp.jsonl")
     run.log_artifact(art)
