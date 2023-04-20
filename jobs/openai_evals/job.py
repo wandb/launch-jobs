@@ -484,13 +484,18 @@ def check_for_valid_eval(run):
             )
         else:
             # User confused the name of the eval with the name of the yaml
-            run.config.eval = alternate_evals[_eval]
+            run.config.update({"eval": alternate_evals[_eval]}, allow_val_change=True)
 
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+config = {}
+p = Path(os.getenv("_WANDB_CONFIG_FILENAME", ""))
+if p.is_file():
+    with p.open() as f:
+        config = yaml.safe_load(f)
 
-with wandb.init(settings=wandb.Settings(disable_git=True)) as run:
+with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run:
     check_for_valid_eval(run)
     is_meta_eval = run.config.eval.endswith("-meta")
     run_eval(run)
