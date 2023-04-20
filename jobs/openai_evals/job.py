@@ -220,6 +220,7 @@ def override_base_prompt(convo, new_prompt):
 
 def run_eval(run):
     model_name, override_prompt = get_model_name_prompt(run.config.model)
+    _eval = get_correct_eval_name(run)
 
     if registry := run.config.get("registry"):
         art = run.use_artifact(registry)
@@ -233,19 +234,17 @@ def run_eval(run):
         for f in (registry_path / "evals").glob("**/*.yaml"):
             d = yaml.safe_load(f.open())
 
-            if run.config.eval not in d:
+            if _eval not in d:
                 continue
 
-            eval_id = d[run.config.eval]["id"]
+            eval_id = d[_eval]["id"]
             jsonl_args = {
                 k: v for k, v in d[eval_id]["args"].items() if str(v).endswith(".jsonl")
             }
             break
 
         if not jsonl_args:
-            raise ValueError(
-                f"Could not find {run.config.eval} in {registry_path / 'evals'}"
-            )
+            raise ValueError(f"Could not find {_eval} in {registry_path / 'evals'}")
 
         for k, v in jsonl_args.items():
             fpath = registry_path / "data" / v
@@ -264,7 +263,7 @@ def run_eval(run):
         del oaieval_settings["record_path"]
         wandb.termwarn("Using `record_path` in `oaieval_settings` is not supported.")
 
-    args = [model_name, run.config.eval]
+    args = [model_name, _eval]
     valid_keys = [
         "extra_eval_params",
         "max_samples",
@@ -396,11 +395,12 @@ def get_model_name_prompt(model):
 def generate_report(run):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     model_name, override_prompt = get_model_name_prompt(run.config.model)
+    _eval = get_correct_eval_name(run)
 
     template_url = (
         "https://wandb.ai/wandb/jobs/reports/Alt-Report-Template--Vmlldzo0MTIwOTUx"
     )
-    if run.config.eval.startswith("manga"):
+    if _eval.startswith("manga"):
         template_url = "https://wandb.ai/wandb/jobs/reports/Baseline-Report-Template--Vmlldzo0MDk5NTUz"
 
     reference_report = wr.Report.from_url(template_url)
@@ -413,7 +413,7 @@ def generate_report(run):
     wr.Report(
         entity=run.entity,
         project=run.project,
-        title=f"OpenAI Evals Profiling Report: {model_name}: {run.config.eval}",
+        title=f"OpenAI Evals Profiling Report: {model_name}: {_eval}",
         description=f"{now}",
         width="fluid",
         blocks=blocks,
@@ -461,7 +461,9 @@ def add_completion_cost(n_tokens, model_name):
     return cost
 
 
-def check_for_valid_eval(run):
+def get_correct_eval_name(run):
+    # a bit annoying to have to do this...
+
     _eval = run.config.eval
 
     pattern = r"\w+(?:\.|-)v\d$"
@@ -483,7 +485,9 @@ def check_for_valid_eval(run):
                 f"Invalid eval: {_eval}.  Please choose from: {valid_evals}"
             )
         # User confused the name of the eval withthe name of the yaml
-        run.config.update({"eval": alternate_evals[_eval]}, allow_val_change=True)
+        _eval = alternate_evals[_eval]
+
+    return _eval
 
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -495,8 +499,8 @@ if p.is_file():
         config = yaml.safe_load(f)
 
 with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run:
-    check_for_valid_eval(run)
-    is_meta_eval = run.config.eval.endswith("-meta")
+    _eval = get_correct_eval_name(run)
+    is_meta_eval = _eval.endswith("-meta")
     run_eval(run)
     test_results = get_test_results()
 
@@ -516,7 +520,7 @@ with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run
         }
     )
 
-    if run.config.eval.startswith("manga"):
+    if _eval.startswith("manga"):
         run.log(
             {
                 "evals": wandb.plot_table(
