@@ -482,9 +482,8 @@ def check_for_valid_eval(run):
             raise ValueError(
                 f"Invalid eval: {_eval}.  Please choose from: {valid_evals}"
             )
-        else:
-            # User confused the name of the eval with the name of the yaml
-            run.config.update({"eval": alternate_evals[_eval]}, allow_val_change=True)
+        # User confused the name of the eval withthe name of the yaml
+        run.config.update({"eval": alternate_evals[_eval]}, allow_val_change=True)
 
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
