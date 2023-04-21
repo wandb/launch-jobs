@@ -4,3 +4,4 @@ evals/
 jobs/openai_eval/*.jsonl
 jobs/sql_query_artifact/*.ipc
 jobs/sql_query_table/*.ipc
+**/*.DS_Store
