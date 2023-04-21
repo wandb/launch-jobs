@@ -1,0 +1,8 @@
+run_name: Deploy TensorFlow Model
+config:
+  artifact: "wandb-artifact://megatruong/fashion-mnist-keras-triton/model-sage-feather-1:v3"
+  framework: "tensorflow"
+  triton_url: "localhost:8000"
+  triton_bucket: "andrew-triton-bucket"
+  triton_model_repo_path: "models"
+  triton_model_config_overrides: {}

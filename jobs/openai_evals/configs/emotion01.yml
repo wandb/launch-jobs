@@ -1,0 +1,9 @@
+run_name: Emotional Intelligence - 01
+config:
+  eval: emotional-intelligence
+  model:
+    name: gpt-3.5-turbo
+    override_prompt: You are an emotionally intelligent AI. Select one or more responses (a,b,c,d) ordered by most to least effective given the context.
+  registry: "wandb/jobs/openai_evals_registry:latest"
+  oaieval_settings:
+    max_samples: 10
