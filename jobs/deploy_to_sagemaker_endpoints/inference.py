@@ -1,4 +1,3 @@
-# noqa
 import torch
 import os
 
