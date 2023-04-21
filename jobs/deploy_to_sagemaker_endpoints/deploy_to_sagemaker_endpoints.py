@@ -2,13 +2,10 @@
 Download a wandb artifact and deploy it to Sagemaker Endpoints.
 """
 
-import os
-from pathlib import Path
 import shutil
 import tarfile
 
 import click
-import yaml
 from sagemaker import Session
 
 import wandb
@@ -44,15 +41,9 @@ required_kwargs = {
 supported_frameworks = {"tensorflow", "pytorch"}
 
 
-# Used to load example configs from wandb jobs repo.
-# Is there a better way to handle this?
-p = Path("config_pytorch.yml")
-if p.is_file():
-    with open(p) as f:
-        config = yaml.safe_load(f)
+settings = wandb.Settings(disable_git=True)
 
-
-with wandb.init(config=config, job_type="deploy_model") as run:
+with wandb.init(settings=settings) as run:
     if run.config.framework not in supported_frameworks:
         err_raise(
             f"Model type: {run.config.framework} not supported.  Model type must be one of {run.config.supported_frameworks}"

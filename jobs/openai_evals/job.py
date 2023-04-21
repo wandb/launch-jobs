@@ -491,14 +491,9 @@ def get_correct_eval_name(run):
 
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
+settings = wandb.Settings(disable_git=True)
 
-config = {}
-p = Path(os.getenv("_WANDB_CONFIG_FILENAME", ""))
-if p.is_file():
-    with p.open() as f:
-        config = yaml.safe_load(f)
-
-with wandb.init(config=config, settings=wandb.Settings(disable_git=True)) as run:
+with wandb.init(settings=settings) as run:
     _eval = get_correct_eval_name(run)
     is_meta_eval = _eval.endswith("-meta")
     run_eval(run)

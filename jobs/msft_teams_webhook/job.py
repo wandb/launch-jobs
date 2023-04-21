@@ -1,22 +1,14 @@
 import json
 import os
-from pathlib import Path
 
 import pymsteams
-import yaml
 from tenacity import Retrying, stop_after_attempt, wait_random_exponential
 
 import wandb
 
-# Used to load example configs from wandb jobs repo.
-# Is there a better way to handle this?
-p = Path("config.yml")
-if p.is_file():
-    with open(p) as f:
-        config = yaml.safe_load(f)
+settings = wandb.Settings(disable_git=True)
 
-
-with wandb.init(config=config, job_type="webhook") as run:
+with wandb.init(settings=settings) as run:
     msg = pymsteams.connectorcard(run.config.webhook_url)
     msg.color(run.config.color)
     msg.text(" ")

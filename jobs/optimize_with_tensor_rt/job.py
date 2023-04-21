@@ -1,20 +1,9 @@
-import os
 import time
 
 import numpy as np
 import tensorflow as tf
-import yaml
-from tensorflow.python.compiler.tensorrt import trt_convert as trt
-
 import wandb
-from pathlib import Path
-
-# Used to load example configs from wandb jobs repo.
-# Is there a better way to handle this?
-p = Path("config.yml")
-if p.is_file():
-    with open(p) as f:
-        config = yaml.safe_load(f)
+from tensorflow.python.compiler.tensorrt import trt_convert as trt
 
 
 def benchmark(warmup_rounds, benchmarking_rounds, model, inp, metric_name):
@@ -25,13 +14,15 @@ def benchmark(warmup_rounds, benchmarking_rounds, model, inp, metric_name):
     wandb.termlog("Benchmarking model...")
     for i in range(benchmarking_rounds):
         start = time.time()
-        preds = model(inp)
+        model(inp)
         stop = time.time()
         time_ms = (stop - start) * 1000
         wandb.log({metric_name: time_ms, "benchmarking_step": i})
 
 
-with wandb.init(config=config, job_type="optimize_model") as run:
+settings = wandb.Settings(disable_git=True)
+
+with wandb.init(settings=settings) as run:
     wandb.termlog("downloading model")
     model_dir = run.config.model.download()
     model = tf.keras.models.load_model(model_dir)

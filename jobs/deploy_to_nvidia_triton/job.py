@@ -4,15 +4,13 @@ Deploy a model artifact logged to W&B to Nvidia Triton
 
 import json
 import os
-import yaml
+
 import boto3
 import click
 import tritonclient.http as httpclient
+import wandb
 from google.protobuf import json_format, text_format
 from tritonclient.grpc import model_config_pb2
-
-import wandb
-from pathlib import Path
 
 # def config_pbtxt_to_dict(fname):
 #     with open(fname) as f:
@@ -75,23 +73,18 @@ def decompose_artifact_str(s):
 valid_frameworks = ["pytorch", "tensorflow"]
 
 
-# Used to load example configs from wandb jobs repo.
-# Is there a better way to handle this?
-p = Path("config_pytorch.yml")
-if p.is_file():
-    with open(p) as f:
-        config = yaml.safe_load(f)
+settings = wandb.Settings(disable_git=True)
 
-with wandb.init(config=config, job_type="deploy_model") as run:
+with wandb.init(settings=settings) as run:
     model_name, model_ver = run.config.artifact.name.split(":v")
     model_ver = int(model_ver)
     if not isinstance(model_ver, int):
         raise ValueError("Triton requires model version to be an integer")
 
-    if "triton_url" not in config:
+    if "triton_url" not in run.config:
         raise ValueError("`triton_url` must be specified in config")
 
-    if "triton_bucket" not in config:
+    if "triton_bucket" not in run.config:
         raise ValueError(
             "`triton_bucket` must be specified in config in the form of your-bucket-name"
         )
