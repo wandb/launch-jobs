@@ -2,8 +2,6 @@
 
 import os
 import subprocess
-import argparse
-import sys
 import datetime
 from typing import Dict, List, Optional
 
@@ -178,7 +176,7 @@ def build(
         # development tooling sometimes looks for service:latest, so we should
         # make sure that we tag newly-built images that way when building for
         # local development
-        print_green(f"Because CI==False, image will also be tagged `latest`")
+        print_green("Because CI==False, image will also be tagged `latest`")
         full_name = qualified_image_name(image, "latest")
         command += f" \ \n  --tag={full_name}"
 

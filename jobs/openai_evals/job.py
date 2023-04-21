@@ -41,7 +41,7 @@ def extend_chatml(r):
     ]
     try:
         return r.prompt + extensions
-    except:
+    except Exception:
         return []
 
 
@@ -135,7 +135,7 @@ def make_chatml_viz(convo):
         background-color: #f5c6cb;
         color: #000;
         }
-        
+
         .message-bubble.assistant.true .message-role {
         color: #006400;
         }
