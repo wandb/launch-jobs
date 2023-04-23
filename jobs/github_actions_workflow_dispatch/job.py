@@ -20,16 +20,16 @@ import wandb
 settings = wandb.Settings(disable_git=True)
 
 with wandb.init(settings=settings) as run:
-    token = os.getenv(run.config.github_api_token_env_var)
+    token = os.getenv(run.config["github_api_token_env_var"])
     workflow = (
         Github(token)
-        .get_user(run.config.owner)
-        .get_repo(run.config.repo)
-        .get_workflow(run.config.workflow)
+        .get_user(run.config["owner"])
+        .get_repo(run.config["repo"])
+        .get_workflow(run.config["workflow"])
     )
     for attempt in Retrying(
-        stop=stop_after_attempt(run.config.retry_settings["attempts"]),
-        wait=wait_random_exponential(**run.config.retry_settings["backoff"]),
+        stop=stop_after_attempt(run.config["retry_settings"]["attempts"]),
+        wait=wait_random_exponential(**run.config["retry_settings"]["backoff"]),
     ):
         with attempt:
-            workflow.create_dispatch(run.config.ref, run.config.workflow_inputs)
+            workflow.create_dispatch(run.config["ref"], run.config["workflow_inputs"])

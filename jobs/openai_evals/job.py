@@ -219,7 +219,7 @@ def override_base_prompt(convo, new_prompt):
 
 
 def run_eval(run):
-    model_name, override_prompt = get_model_name_prompt(run.config.model)
+    model_name, override_prompt = get_model_name_prompt(run.config["model"])
     _eval = get_correct_eval_name(run)
 
     if registry := run.config.get("registry"):
@@ -350,7 +350,7 @@ def get_evals_table(test_results):
         eval_name=spec.get("eval_name"),
     )
 
-    model_name, override_prompt = get_model_name_prompt(run.config.model)
+    model_name, override_prompt = get_model_name_prompt(run.config["model"])
     final_df["completion_cost"] = final_df.usage_total_tokens.apply(
         add_completion_cost, model_name=model_name
     )
@@ -382,7 +382,7 @@ def get_model_name_prompt(model):
         art = wandb.Artifact("openai_evals_model", type="model")
         model_spec_fname = "model_spec.json"
         with open(model_spec_fname, "w") as f:
-            json.dump(run.config.model, f)
+            json.dump(run.config["model"], f)
         art.add_file(model_spec_fname)
         run.use_artifact(art)
 
@@ -394,7 +394,7 @@ def get_model_name_prompt(model):
 
 def generate_report(run):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    model_name, override_prompt = get_model_name_prompt(run.config.model)
+    model_name, override_prompt = get_model_name_prompt(run.config["model"])
     _eval = get_correct_eval_name(run)
 
     template_url = (
@@ -464,7 +464,7 @@ def add_completion_cost(n_tokens, model_name):
 def get_correct_eval_name(run):
     # a bit annoying to have to do this...
 
-    _eval = run.config.eval
+    _eval = run.config["eval"]
 
     pattern = r"\w+(?:\.|-)v\d$"
 

@@ -76,7 +76,7 @@ valid_frameworks = ["pytorch", "tensorflow"]
 settings = wandb.Settings(disable_git=True)
 
 with wandb.init(settings=settings) as run:
-    model_name, model_ver = run.config.artifact.name.split(":v")
+    model_name, model_ver = run.config["artifact"].name.split(":v")
     model_ver = int(model_ver)
     if not isinstance(model_ver, int):
         raise ValueError("Triton requires model version to be an integer")
@@ -90,31 +90,31 @@ with wandb.init(settings=settings) as run:
         )
 
     wandb_termlog_heading("Downloading wandb artifact")
-    path = run.config.artifact.download()
+    path = run.config["artifact"].download()
 
     wandb_termlog_heading(
         "Uploading model to Triton model repo (this may take a while...)"
     )
 
-    if run.config.framework not in valid_frameworks:
+    framework = run.config["framework"]
+
+    if framework not in valid_frameworks:
         raise ValueError(
-            f"Invalid framework {run.config.framework} -- must be one of {valid_frameworks}"
+            f"Invalid framework {framework} -- must be one of {valid_frameworks}"
         )
-    if run.config.framework == "tensorflow":
-        remote_path = f"{run.config.triton_model_repo_path}/{model_name}/{model_ver}/model.savedmodel"
-    if run.config.framework == "pytorch":
-        remote_path = f"{run.config.triton_model_repo_path}/{model_name}/{model_ver}"
-    upload_files_to_triton_repo(path, remote_path, run.config.triton_bucket)
+    if framework == "tensorflow":
+        remote_path = f"{run.config['triton_model_repo_path']}/{model_name}/{model_ver}/model.savedmodel"
+    if framework == "pytorch":
+        remote_path = f"{run.config['triton_model_repo_path']}/{model_name}/{model_ver}"
+    upload_files_to_triton_repo(path, remote_path, run.config["triton_bucket"])
 
     wandb_termlog_heading("Loading model into Triton")
-    with httpclient.InferenceServerClient(url=run.config.triton_url) as client:
+    with httpclient.InferenceServerClient(url=run.config["triton_url"]) as client:
         base_pbtxt_config = s3_config_pbtxt_to_dict(
-            bucket=run.config.triton_bucket,
-            pbtxt_path=f"{run.config.triton_model_repo_path}/{model_name}/config.pbtxt",
+            bucket=run.config["triton_bucket"],
+            pbtxt_path=f"{run.config['triton_model_repo_path']}/{model_name}/config.pbtxt",
         )
-        if (
-            not base_pbtxt_config and run.config.framework == "tensorflow"
-        ):  # no config.pbtxt found
+        if not base_pbtxt_config and framework == "tensorflow":  # no config.pbtxt found
             wandb.termwarn(
                 f"Did not find config.pbtxt for {model_name}/{model_ver}.  Trying to autogenerate config..."
             )
@@ -137,7 +137,7 @@ with wandb.init(settings=settings) as run:
         triton_configs = {
             **base_pbtxt_config,
             **version_config,
-            **run.config.triton_model_config_overrides,
+            **run.config["triton_model_config_overrides"],
         }
         dict_to_config_pbtxt(triton_configs, "overloaded_config.pbtxt")
         client.load_model(model_name, config=json.dumps(triton_configs))
