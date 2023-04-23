@@ -13,4 +13,16 @@ with wandb.init(settings=settings) as run:
     conn = f"{protocol}://{username}:{password}@{base_url}"
 
     df = pl.read_sql(run.config.query, conn)
-    run.log({run.config.table_name: df.to_pandas()})
+
+    if run.config.output_type == "artifact":
+        filename = "{name}.{filetype}".format(**run.config.artifact)
+        df.write_ipc(filename)
+
+        art = wandb.Artifact(run.config.artifact["name"], type="sql-table")
+        art.add_file(filename)
+
+        run.log_artifact(art)
+
+    # elif run.config.output_type == 'table':
+    else:
+        run.log({run.config.table_name: df.to_pandas()})

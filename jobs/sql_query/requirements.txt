@@ -1,4 +1,5 @@
 connectorx
+pandas
 polars
 pyarrow
 wandb
