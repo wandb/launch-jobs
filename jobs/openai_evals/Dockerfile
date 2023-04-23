@@ -15,6 +15,6 @@ RUN pip install -U -e ./evals && \
 COPY --link openai.py ./evals/evals/completion_fns/openai.py
 
 WORKDIR /launch
-COPY --link job.py config.yml ./
+COPY --link job.py configs/ ./
 
 ENTRYPOINT ["python3", "job.py"]
