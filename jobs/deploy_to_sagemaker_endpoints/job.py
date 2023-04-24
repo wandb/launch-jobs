@@ -44,17 +44,17 @@ supported_frameworks = {"tensorflow", "pytorch"}
 settings = wandb.Settings(disable_git=True)
 
 with wandb.init(settings=settings) as run:
-    if run.config.framework not in supported_frameworks:
+    if run.config["framework"] not in supported_frameworks:
         err_raise(
-            f"Model type: {run.config.framework} not supported.  Model type must be one of {run.config.supported_frameworks}"
+            f"Model type: {run.config['framework']} not supported.  Model type must be one of {run.config['supported_frameworks']}"
         )
-    if run.config.framework == "tensorflow":
+    if run.config["framework"] == "tensorflow":
         from sagemaker.tensorflow.model import TensorFlowModel
-    if run.config.framework == "pytorch":
+    if run.config["framework"] == "pytorch":
         from sagemaker.pytorch.model import PyTorchModel
 
     unset_kwargs = {
-        k for k in required_kwargs[run.config.framework] if not run.config.get(k)
+        k for k in required_kwargs[run.config["framework"]] if not run.config.get(k)
     }
     if unset_kwargs:
         err_raise(
@@ -62,14 +62,14 @@ with wandb.init(settings=settings) as run:
         )
 
     wandb_termlog_heading("Downloading artifact from wandb")
-    path = run.config.artifact.download()
+    path = run.config["artifact"].download()
 
     wandb_termlog_heading("Creating temp directory for sagemaker model")
     name_ver = path.split("/")[-1]
     name, ver = name_ver.split(":v")
     target = f"temp/{name}/{name}/{ver}"
     shutil.copytree(path, target)
-    if run.config.framework == "pytorch":
+    if run.config["framework"] == "pytorch":
         shutil.copyfile("./inference.py", f"temp/{name}/{name}/{ver}/inference.py")
 
     model_str = f"{name}-{ver}"
@@ -80,35 +80,35 @@ with wandb.init(settings=settings) as run:
     wandb_termlog_heading("Uploading model to S3")
     session = Session()
     model_data = session.upload_data(
-        bucket=run.config.sagemaker_bucket, path=model_tar, key_prefix=model_str
+        bucket=run.config["sagemaker_bucket"], path=model_tar, key_prefix=model_str
     )
 
     wandb_termlog_heading(
         "Deploy model to Sagemaker Endpoints (this may take a while...)"
     )
-    if run.config.framework == "tensorflow":
+    if run.config["framework"] == "tensorflow":
         sm_model = TensorFlowModel(
             model_data=model_data,
-            framework_version=run.config.framework_version,
-            role=run.config.sagemaker_role,
-            **run.config.sagemaker_model_setup_kwargs,
+            framework_version=run.config["framework_version"],
+            role=run.config["sagemaker_role"],
+            **run.config["sagemaker_model_setup_kwargs"],
         )
 
-    if run.config.framework == "pytorch":
+    if run.config["framework"] == "pytorch":
         sm_model = PyTorchModel(
             entry_point="inference.py",
-            py_version=run.config.python_version,
+            py_version=run.config["python_version"],
             model_data=model_data,
-            framework_version=run.config.framework_version,
-            role=run.config.sagemaker_role,
-            **run.config.sagemaker_model_setup_kwargs,
+            framework_version=run.config["framework_version"],
+            role=run.config["sagemaker_role"],
+            **run.config["sagemaker_model_setup_kwargs"],
         )
 
     predictor = sm_model.deploy(
-        initial_instance_count=run.config.instance_count,
-        instance_type=run.config.instance_type,
-        # tags=run.config.sagemaker_deploy_tags,
-        **run.config.sagemaker_model_deployment_kwargs,
+        initial_instance_count=run.config["instance_count"],
+        instance_type=run.config["instance_type"],
+        # tags=run.config["sagemaker_deploy_tags"],
+        **run.config["sagemaker_model_deployment_kwargs"],
     )
 
     wandb_termlog_heading(f"Successfully deployed endpoint: {predictor.endpoint}")

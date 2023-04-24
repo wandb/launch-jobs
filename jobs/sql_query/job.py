@@ -14,7 +14,7 @@ with wandb.init(settings=settings) as run:
     password = os.getenv(connection["password_env"])
     conn = f"{protocol}://{username}:{password}@{base_url}"
 
-    df = pl.read_sql(run.config["query"], conn)
+    df = pl.read_database(run.config["query"], conn)
 
     if run.config["output_type"] == "artifact":
         filename = "{name}.{filetype}".format(**run.config["artifact"])
