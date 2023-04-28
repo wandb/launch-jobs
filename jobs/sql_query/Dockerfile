@@ -2,7 +2,9 @@
 
 # connectorx does not have linux ARM support
 # https://github.com/sfu-db/connector-x/issues/240
-FROM --platform=linux/amd64 python:3.9-buster
+FROM --platform=linux/amd64 python:3.9-slim
+RUN apt update && apt install gcc -y
+
 WORKDIR /launch
 
 COPY --link requirements.txt ./
