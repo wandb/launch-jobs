@@ -1,0 +1,27 @@
+openai_evals:
+  name: OpenAI Evals
+  desc: Evaluate LLMs using OpenAI's evaluation framework. Bring your own completions, or have the model complete for you!
+hello_world:
+  name: Hello World
+  desc: 🚀
+deploy_to_sagemaker_endpoints:
+  name: Deploy to Sagemaker Endpoints
+  desc: Deploy model artifacts to SageMaker Endpoints!
+sql_query:
+  name: SQL Query
+  desc: Query a SQL database and save the results as a W&B table or Artifact
+msft_teams_webhook:
+  name: Microsoft Teams Webhook
+  desc: Send a message to Teams
+http_webhook:
+  name: Send Webhook
+  desc: Fire a generic webhook with payload
+gpu_optimize_with_tensor_rt:
+  name: Optimize with NVIDIA TensorRT
+  desc: Improve model inference performance for TensorFlow and PyTorch model artifacts
+github_actions_workflow_dispatch:
+  name: Github Actions Workflow Dispatch
+  desc: Fire a Github Action on demand!
+deploy_to_nvidia_triton:
+  name: Deploy to NVIDIA Triton Inference Server
+  desc: Deploy model artifacts to an NVIDIA Triton server!
