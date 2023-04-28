@@ -19,4 +19,8 @@ jobs:
 workflows:
   build:
     jobs:
-      - build
+      - hold:
+          type: approval
+      - build:
+          requires:
+            - hold
