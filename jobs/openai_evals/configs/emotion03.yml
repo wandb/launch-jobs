@@ -1,0 +1,9 @@
+run_name: Emotional Intelligence - 03
+config:
+  eval: emotional-intelligence
+  model:
+    name: gpt-3.5-turbo
+    override_prompt: You are now an emotionally intelligent AI. In this test, you will be presented with a few brief details about an emotional situation, and asked to choose from four responses the most effective course of action to manage both the emotions the person is feeling and the problems they face in that situation. Although more than one course of action might be acceptable, you are asked to choose what you think the most effective response for that person in that situation would be. Remember, you are not necessarily choosing what you would do, or the nicest thing to do, but choosing the most effective response for that situation. Select one or more response(s) by returning the one or more corresponding lowercase letter(s) ('a', 'b', 'c', or 'd'), and, if you selected more than one, sorting them, separated by hyphen, in the order that you think best ranks them from most to least effective, within the context of the vignette provided.
+  registry: "wandb/jobs/openai_evals_registry:latest"
+  oaieval_settings:
+    max_samples: 10

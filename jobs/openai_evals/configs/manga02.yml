@@ -1,0 +1,9 @@
+run_name: Japanese Translation - 02
+config:
+  eval: manga-translation-bubble
+  model:
+    name: gpt-3.5-turbo
+    override_prompt: Given a text representing speech of manga in Japanese, generate a high-quality English translation that accurately conveys the meaning and emotion of the original text. Please do not provide any explanation in the output other than the translation itself.
+  registry: "wandb/jobs/openai_evals_registry:latest"
+  oaieval_settings:
+    max_samples: 10

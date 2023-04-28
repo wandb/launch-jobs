@@ -12,24 +12,16 @@ Outputs:
 """
 
 import os
-from pathlib import Path
 
 import httpx
-import yaml
 from tenacity import Retrying, stop_after_attempt, wait_random_exponential
 
 import wandb
 
-# Used to load example configs from wandb jobs repo.
-# Is there a better way to handle this?
-p = Path("config.yml")
-if p.is_file():
-    with open(p) as f:
-        config = yaml.safe_load(f)
+settings = wandb.Settings(disable_git=True)
 
-
-with wandb.init(config=config, job_type="webhook") as run:
-    token = os.getenv(run.config.github_api_token_env_var)
+with wandb.init(settings=settings) as run:
+    token = os.getenv(run.config['github_api_token_env_var'])
     headers = {
         "Accept": "application/vnd.github+json",
         "Authorization": f"Bearer {token}",
@@ -41,10 +33,10 @@ with wandb.init(config=config, job_type="webhook") as run:
     }
 
     for attempt in Retrying(
-        stop=stop_after_attempt(run.config.retry_settings["attempts"]),
-        wait=wait_random_exponential(**run.config.retry_settings["backoff"]),
+        stop=stop_after_attempt(run.config['retry_settings']["attempts"]),
+        wait=wait_random_exponential(**run.config['retry_settings']["backoff"]),
     ):
         with attempt, httpx.Client(base_url="https://api.github.com") as client:
-            endpoint = f"/repos/{run.config.repo}/actions/workflows/{run.config.workflow}/dispatches"  # noqa
+            endpoint = f"/repos/{run.config['repo']}/actions/workflows/{run.config['workflow']}/dispatches"  # noqa
             r = client.post(endpoint, headers=headers, json=payload)
             r.raise_for_status()

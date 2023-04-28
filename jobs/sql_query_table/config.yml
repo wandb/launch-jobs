@@ -1,7 +1,0 @@
-query: "select * from actor"
-connection:
-  protocol: "mysql"
-  base_url: "localhost:3307/sakila"
-  username_env: "MYSQL_USER"
-  password_env: "MYSQL_PASSWORD"
-table_name: "actor"

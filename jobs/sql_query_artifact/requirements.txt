@@ -1,4 +1,0 @@
-connectorx
-polars
-pyarrow
-wandb

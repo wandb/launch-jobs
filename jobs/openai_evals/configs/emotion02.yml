@@ -1,0 +1,9 @@
+run_name: Emotional Intelligence - 02
+config:
+  eval: emotional-intelligence
+  model:
+    name: gpt-3.5-turbo
+    override_prompt: You are a therapist trying to manage a person's feelings and resolve their problems. Select one or more responses (a,b,c,d) ordered by most to least effective given the context.
+  registry: "wandb/jobs/openai_evals_registry:latest"
+  oaieval_settings:
+    max_samples: 10

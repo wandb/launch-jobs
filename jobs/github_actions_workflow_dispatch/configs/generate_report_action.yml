@@ -1,0 +1,14 @@
+run_name: Generate Report Action
+config:
+  owner: "wandb"
+  repo: "launch-jobs"
+  ref: "main"
+  workflow: "generate-report.yml"
+  workflow_inputs:
+    template-file: "workflow_helpers/template.py"
+  github_api_token_env_var: "GITHUB_API_TOKEN"
+  retry_settings:
+    attempts: 3
+    backoff:
+      multiplier: 1
+      max: 60

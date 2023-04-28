@@ -1,0 +1,9 @@
+run_name: Japanese Translation - 01
+config:
+  eval: manga-translation-bubble
+  model:
+    name: gpt-3.5-turbo
+    override_prompt: You are MangaGPT. You make english translations of Japanese manga
+  registry: "wandb/jobs/openai_evals_registry:latest"
+  oaieval_settings:
+    max_samples: 10
