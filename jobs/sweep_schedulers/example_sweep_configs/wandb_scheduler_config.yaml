@@ -1,0 +1,21 @@
+method: bayes
+metric:
+   name: val_accuracy
+   goal: maximize
+
+# Use a training job here, NOT what we just created above
+# This is the job to be used in the execution of the actual sweep
+job: <TRAINING JOB>
+
+# This is where we use the scheduler job that is created in the run above
+scheduler:
+   job: <SCHEDULER JOB>
+
+# This is the parameter space to be used in the sweep
+parameters:
+  learning_rate:
+    values: [0.01, 0.02, 0.03, 0.04, 0.05]
+  momentum:
+    min: 0.8
+    max: 0.99
+    distribution: uniform
