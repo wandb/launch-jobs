@@ -70,7 +70,7 @@ def decompose_artifact_str(s):
     return entity, project, name, version
 
 
-valid_frameworks = ["pytorch", "tensorflow"]
+valid_frameworks = ["pytorch", "tensorflow", "ensemble"]
 
 
 settings = wandb.Settings(disable_git=True)
@@ -106,6 +106,8 @@ with wandb.init(settings=settings) as run:
         remote_path = f"{run.config['triton_model_repo_path']}/{model_name}/{model_ver}/model.savedmodel"
     if framework == "pytorch":
         remote_path = f"{run.config['triton_model_repo_path']}/{model_name}/{model_ver}"
+    if framework == "ensemble":
+        remote_path = run.config["triton_model_repo_path"]
     upload_files_to_triton_repo(path, remote_path, run.config["triton_bucket"])
 
     wandb_termlog_heading("Loading model into Triton")
@@ -137,7 +139,7 @@ with wandb.init(settings=settings) as run:
         triton_configs = {
             **base_pbtxt_config,
             **version_config,
-            **run.config["triton_model_config_overrides"],
+            **run.config.get("triton_model_config_overrides", {}),
         }
         dict_to_config_pbtxt(triton_configs, "overloaded_config.pbtxt")
         client.load_model(model_name, config=json.dumps(triton_configs))
