@@ -21,7 +21,7 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
     parser.add_argument("--name", type=str, default=None)
     cli_args = parser.parse_args()
 
-    name = cli_args.name or f"{scheduler.__class__.__name__}-scheduler"
+    name = cli_args.name or "sweep-scheduler-job"
 
     run = wandb.init(project=cli_args.project, entity=cli_args.entity)
     run.log_code(name=name, exclude_fn=lambda x: x.startswith("_"))

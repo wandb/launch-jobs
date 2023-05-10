@@ -24,6 +24,10 @@ parameters:
 
 ```
 
+3. Then, to run a launch-sweep, use the CLI command: 
+   `wandb launch-sweep <config.yaml> --queue <queue>
+
 ### Important Notes: 
 
-1. For the `wandb_scheduler`, use the `method` parameter in the sweep config as usual [bayes, grid, random]. For other schedulers, please set `method: custom`
+1. There are **two** different jobs that must be included in the sweep config! One is the training job, which can be created by running a local wandb run that has a call to `run.log_code()`. The second job is the one created by running the schedulers in this folder. 
+2. For the `wandb_scheduler`, use the `method` parameter in the sweep config as usual [bayes, grid, random]. For other schedulers, please set `method: custom`
