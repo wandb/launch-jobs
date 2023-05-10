@@ -1,12 +1,9 @@
 This folder contains jobs that can be used as schedulers for launch sweeps. 
 
-Intended use: 
+The intended use is to clone the repo, modifying scripts with impunity, and then:
 
-Clone the repo, modify scripts with impunity.
-
-`python wandb_scheduler.py`
-
-Then use the job that is created in a sweep config file like: 
+1. `python wandb_scheduler.py`
+2. Use the job that is created in a sweep config file like: 
 
 ```yaml
 method: bayes
@@ -29,4 +26,4 @@ parameters:
 
 ### Important Notes: 
 
-1. For the wandb_scheduler, use the `method` parameter in the sweep config as usual [bayes, grid, random]. For other schedulers, please set `method: custom`
+1. For the `wandb_scheduler`, use the `method` parameter in the sweep config as usual [bayes, grid, random]. For other schedulers, please set `method: custom`

@@ -93,9 +93,4 @@ class WandbScheduler(Scheduler):
 
 
 if __name__ == "__main__":
-    scheduler_args = {
-        "project": "proj",
-        "entity": "griffin_wb",
-        "num_workers": 1,
-    }
-    setup_scheduler(WandbScheduler, **scheduler_args)
+    setup_scheduler(WandbScheduler)
