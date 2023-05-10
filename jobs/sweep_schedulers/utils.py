@@ -39,6 +39,6 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
         num_workers = cli_args.num_workers
 
     _scheduler = scheduler(
-        Api(), **args, **kwargs, num_workers=num_workers, sweep_id="WANDB_SWEEP_ID"
+        Api(), **args, **kwargs, num_workers=num_workers
     )
     _scheduler.start()
