@@ -1,5 +1,5 @@
 scheduler:
-   job: griffin_wb/launch-jobs-jobs_sweep_schedulers/job-git_github.com_wandb_launch-jobs.git_jobs_sweep_schedulers_scheduler_optuna.py:latest
+   job: griffin_wb/launch-jobs-jobs_sweep_schedulers/job-OptunaScheduler:latest
 
 # optuna specific config
 custom:

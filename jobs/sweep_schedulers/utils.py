@@ -19,11 +19,15 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
     parser.add_argument("--entity", type=str, default=kwargs.get("entity"))
     parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--name", type=str, default=None)
+    parser.add_argument("--disable_git", type=bool, default=False)
     cli_args = parser.parse_args()
 
-    name = cli_args.name or f"{scheduler.__name__}-scheduler-job"
-
-    run = wandb.init(project=cli_args.project, entity=cli_args.entity)
+    name = cli_args.name or scheduler.__name__
+    run = wandb.init(
+        settings={'disable_git': True} if cli_args.disable_git else {},
+        project=cli_args.project,
+        entity=cli_args.entity,
+    )
     run.log_code(name=name, exclude_fn=lambda x: x.startswith("_"))
     config = run.config
 
@@ -32,13 +36,13 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
         return
 
     args = config.get("sweep_args", {})
-    wandb.termlog(f"Starting sweep scheduler with args: {args}")
-
     num_workers = kwargs.pop("num_workers", None)
     if cli_args.num_workers:
         num_workers = cli_args.num_workers
 
     _scheduler = scheduler(
-        Api(), **args, **kwargs, num_workers=num_workers
+        Api(),
+        run=run,
+        **args, **kwargs, num_workers=num_workers
     )
     _scheduler.start()

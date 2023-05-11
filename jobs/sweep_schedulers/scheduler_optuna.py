@@ -70,7 +70,6 @@ class OptunaScheduler(Scheduler):
     def __init__(
         self,
         api: Api,
-        optuna_config: Dict[str, Any],
         *args: Optional[Any],
         **kwargs: Optional[Any],
     ):
@@ -81,8 +80,10 @@ class OptunaScheduler(Scheduler):
         self._trial_func = self._make_trial
         self._optuna_runs: Dict[str, OptunaRun] = {}
 
-        # Load optuna args from wandb_run
-        self._optuna_config = optuna_config
+        # Load optuna args from kwargs then check wandb run config
+        self._optuna_config = kwargs.get('custom')
+        if not self._optuna_config:
+            self._optuna_config = self._wandb_run.config.get("custom", {})
 
     @property
     def study(self) -> optuna.study.Study:
