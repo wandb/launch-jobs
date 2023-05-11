@@ -1,0 +1,21 @@
+scheduler:
+   job: griffin_wb/launch-jobs-jobs_sweep_schedulers/job-git_github.com_wandb_launch-jobs.git_jobs_sweep_schedulers_scheduler_optuna.py:latest
+
+# optuna specific config
+custom:
+   type: optuna
+   artifact_filepath: pythonic_config.py
+   artifact: griffin_wb/proj/optuna-funcs:latest
+   pruner:
+      type: PercentilePruner
+      args:
+         n_startup_trials: 2
+         n_min_trials: 1
+         percentile: 0.25  # top 25% kept
+
+method: custom
+job: griffin_wb/proj/job-source-proj-simple.py:latest
+run_cap: 2
+metric:
+  goal: maximize
+  name: val_acc
