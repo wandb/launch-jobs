@@ -29,5 +29,14 @@ docker run \
 
 ## Note on testing
 
+### Keras
+
 - Tested using keras savedmodel and torchscript on CPU
+
+### Pytorch
+
 - Note: For pytorch, your model needs to have already been converted to torchscript and saved to Artifacts before uploading -- currently investigating if we can do the conversion automatically.
+
+### Ensemble
+
+- Note: For ensemble, you must package the component models and define the config.pbtxt ahead of time. The component models can be referenced from other artifacts. See [this artifact](https://wandb.ai/megatruong/tritonserver-ensemble-testing10/artifacts/ensemble_model/ensemble_model/v0/files) for an example of how to structure your artifact, and the [ensemble directory](https://wandb.ai/megatruong/tritonserver-ensemble-testing10/artifacts/ensemble_model/ensemble_model/v0/files/ensemble) to see an example `config.pbtxt`.

@@ -1,0 +1,11 @@
+run_name: Deploy Ensemble Model
+config:
+  artifact: "wandb-artifact://megatruong/tritonserver-ensemble-testing10/ensemble_model:v0"
+  framework: "ensemble"
+  triton_url: "localhost:8000"
+  triton_bucket: "andrew-triton-bucket"
+  triton_model_repo_path: "models"
+  triton_model_config_overrides:
+    version_policy:
+      specific:
+        versions: [1]
