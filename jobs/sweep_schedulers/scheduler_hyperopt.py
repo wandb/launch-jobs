@@ -1,22 +1,20 @@
 import base64
-import wandb
+import logging
+import time
 from collections import defaultdict
 from functools import partial
-from hyperopt import fmin, hp, tpe, Trials, space_eval, STATUS_OK, STATUS_FAIL
-# from hyperopt.mongoexp import MongoTrials
-import click 
-import logging
-import time 
 from typing import Any, Dict, List, Optional, Tuple
 
-from wandb.sdk.launch.sweeps.scheduler import Scheduler, SweepRun
+# from hyperopt.mongoexp import MongoTrials
+import click
+import wandb
+from hyperopt import STATUS_FAIL, STATUS_OK, Trials, fmin, hp, space_eval, tpe
+from utils import setup_scheduler
 from wandb.apis.internal import Api
 from wandb.apis.public import Api as PublicApi
 from wandb.apis.public import Artifact, QueuedRun, Run
 from wandb.sdk.launch.sweeps import SchedulerError
-
-from utils import setup_scheduler
-
+from wandb.sdk.launch.sweeps.scheduler import Scheduler, SweepRun
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +30,6 @@ LOG_PREFIX = f"{click.style('hyperopt sched:', fg='bright_yellow')} "
 
 
 class HyperoptScheduler(Scheduler):
-
     def __init__(
         self,
         api: Api,
@@ -70,7 +67,7 @@ class HyperoptScheduler(Scheduler):
             else:
                 logger.debug(f"Unknown parameter type: param={param}, val={extras}")
         return config
-    
+
     def _convert_search_space(self, params: Dict[str, Any]) -> Dict[str, Any]:
         wandb_config = {}
         for key, val in params.items():
@@ -88,7 +85,7 @@ class HyperoptScheduler(Scheduler):
             wandb_config = self._convert_search_space(params)
             run = self._create_run()
             srun = SweepRun(
-                id=self._encode(run['id']),
+                id=self._encode(run["id"]),
                 args=wandb_config,
                 worker_id=worker_id,
             )
@@ -104,7 +101,10 @@ class HyperoptScheduler(Scheduler):
                     # TODO(gst): why does the state never change?
                     if not run_state.is_alive:
                         # done, log some metrics internally for visibility, then return
-                        self._trials[srun.id] = {"min_loss": min(metrics), "num_metrics": len(metrics)}
+                        self._trials[srun.id] = {
+                            "min_loss": min(metrics),
+                            "num_metrics": len(metrics),
+                        }
                         del self._runs[srun.id]
 
                         return {
@@ -135,7 +135,7 @@ class HyperoptScheduler(Scheduler):
 
         best_params = []
         wandb.termlog(f"{LOG_PREFIX}{best_params=} {trials.results=}")
-        
+
         # Cleanup
         self.stop_sweep()
         self.exit()
