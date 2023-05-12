@@ -1,6 +1,7 @@
 import base64
 import wandb
 from collections import defaultdict
+from functools import partial
 from hyperopt import fmin, hp, tpe, Trials, space_eval, STATUS_OK, STATUS_FAIL
 # from hyperopt.mongoexp import MongoTrials
 import click 
@@ -40,10 +41,11 @@ class HyperoptScheduler(Scheduler):
     ):
         super().__init__(api, *args, **kwargs)
 
-        self.num_workers = 1  # hyperopt only supports 1 worker
+        self.num_workers = 2  # hyperopt only supports 1 worker
 
         self.hyperopt_runs = {}
         self._trials = {}
+        self._workers: Dict[str, int] = {}
 
     def _make_search_space(self, sweep_config: Dict[str, Any]) -> Dict[str, Any]:
         """Use a sweep config to create hyperopt search space"""
@@ -81,13 +83,14 @@ class HyperoptScheduler(Scheduler):
     def run(self):
         # overload scheduler run with special hyperopt logic
 
-        def objective(params):
+        def objective(params, worker_id):
+            wandb.termlog(f"{LOG_PREFIX}Running objective with params: {params}")
             wandb_config = self._convert_search_space(params)
             run = self._create_run()
             srun = SweepRun(
                 id=self._encode(run['id']),
                 args=wandb_config,
-                worker_id=0,  # only 1 worker at a time
+                worker_id=worker_id,
             )
             wandb.termlog(f"{LOG_PREFIX}Hyperopt trials state:\n{self._trials}")
             self._add_to_launch_queue(srun)
@@ -95,13 +98,15 @@ class HyperoptScheduler(Scheduler):
             while True:
                 try:
                     metrics = self._get_metrics_from_run(srun.id)
-                    run_info = self._get_run_info(srun.id)
-                    wandb.termlog(f"{LOG_PREFIX}{run_info=} {len(metrics)=}")
+                    run_state = self._get_run_state(srun.id)
+                    wandb.termlog(f"{LOG_PREFIX}{run_state=} {len(metrics)=}")
 
                     # TODO(gst): why does the state never change?
-                    if len(metrics) == 100:
+                    if not run_state.is_alive:
                         # done, log some metrics internally for visibility, then return
                         self._trials[srun.id] = {"min_loss": min(metrics), "num_metrics": len(metrics)}
+                        del self._runs[srun.id]
+
                         return {
                             "loss": min(metrics),
                             "status": STATUS_OK,
@@ -115,12 +120,12 @@ class HyperoptScheduler(Scheduler):
 
                 time.sleep(self._polling_sleep)
 
-        config = self._sweep_config["parameters"]
-        # convert wandb config to hyperopt style
-        search_space = self._make_search_space(config)
+        # convert wandb params to hyperopt style
+        search_space = self._make_search_space(self._sweep_config["parameters"])
         trials = Trials()
+        objective_with_worker_id = partial(objective, worker_id=2)
         best_params = fmin(
-            fn=objective,
+            fn=objective_with_worker_id,
             space=search_space,
             algo=tpe.suggest,  # bayesian optimization
             max_evals=self._sweep_config.get("run_cap"),
@@ -128,17 +133,12 @@ class HyperoptScheduler(Scheduler):
             show_progressbar=False,
         )
 
+        best_params = []
         wandb.termlog(f"{LOG_PREFIX}{best_params=} {trials.results=}")
-
+        
         # Cleanup
         self.stop_sweep()
         self.exit()
-
-        # TODO: Test out this method:
-        # advantages: should enable batching and concurrency
-        # disadvantages: does this actually work with bayes? trial state?
-        for _ in range(2000):
-            fmin(objective, search_space, tpe.suggest, len(trials)+1, trials)
 
     def _exit(self):
         pass
