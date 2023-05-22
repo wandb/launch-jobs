@@ -81,7 +81,7 @@ class OptunaScheduler(Scheduler):
         self._optuna_runs: Dict[str, OptunaRun] = {}
 
         # Load optuna args from kwargs then check wandb run config
-        self._optuna_config = kwargs.get('settings')
+        self._optuna_config = kwargs.get("settings")
         if not self._optuna_config:
             self._optuna_config = self._wandb_run.config.get("settings", {})
 
@@ -101,7 +101,8 @@ class OptunaScheduler(Scheduler):
     @property
     def study_string(self) -> str:
         msg = f"{LOG_PREFIX}{'Loading' if self._wandb_run.resumed else 'Creating'}"
-        msg += f" optuna study: {self.study_name} [storage:{self.study._storage.__class__.__name__}"
+        msg += f" optuna study: {self.study_name} "
+        msg += f"[storage:{self.study._storage.__class__.__name__}"
         msg += f", direction:{self.study.direction.name.capitalize()}"
         msg += f", pruner:{self.study.pruner.__class__.__name__}"
         msg += f", sampler:{self.study.sampler.__class__.__name__}]"
@@ -128,7 +129,8 @@ class OptunaScheduler(Scheduler):
                 elif self.study.direction == optuna.study.StudyDirection.MAXIMIZE:
                     best = round(max(vals), 5)
             trial_strs += [
-                f"\t[trial-{trial.number + 1}] run: {run_id}, state: {trial.state.name}, num-metrics: {len(vals)}, best: {best}"
+                f"\t[trial-{trial.number + 1}] run: {run_id}, state: "
+                f"{trial.state.name}, num-metrics: {len(vals)}, best: {best}"
             ]
 
         return "\n".join(trial_strs[-10:])  # only print out last 10
@@ -143,7 +145,8 @@ class OptunaScheduler(Scheduler):
 
         if study.user_attrs:
             wandb.termwarn(
-                f"{LOG_PREFIX}user_attrs are ignored from provided study ({study.user_attrs})"
+                f"{LOG_PREFIX}user_attrs are ignored from provided study:"
+                f" ({study.user_attrs})"
             )
 
         if study._storage is not None:
@@ -174,7 +177,6 @@ class OptunaScheduler(Scheduler):
         # TODO(gst): also make compatible with local file
         # log the artifact for the user at sweep creation CLI time
 
-
         # load user-set optuna class definition file
         artifact = self._wandb_run.use_artifact(artifact_name, type="optuna")
         if not artifact:
@@ -183,7 +185,9 @@ class OptunaScheduler(Scheduler):
             )
 
         path = artifact.download()
-        optuna_filepath = self._optuna_config.get('artifact_filepath', OptunaComponents.main_file.value)
+        optuna_filepath = self._optuna_config.get(
+            "artifact_filepath", OptunaComponents.main_file.value
+        )
         mod, err = _get_module("optuna", f"{path}/{optuna_filepath}")
         if not mod:
             raise SchedulerError(
@@ -509,7 +513,8 @@ class OptunaScheduler(Scheduler):
         Returns wandb formatted config and optuna trial from real study
         """
         wandb.termlog(
-            f"{LOG_PREFIX}Making trial params from objective func, ignoring sweep config parameters"
+            f"{LOG_PREFIX}Making trial params from objective func,"
+            " ignoring sweep config parameters"
         )
         study_copy = optuna.create_study()
         study_copy.add_trials(self.study.trials)
@@ -528,7 +533,9 @@ class OptunaScheduler(Scheduler):
         signal.alarm(0)  # disable alarm
 
         # now ask the study to create a new active trial from the distributions provided
-        new_trial = self.study.ask(fixed_distributions=study_copy.trials[-1].distributions)
+        new_trial = self.study.ask(
+            fixed_distributions=study_copy.trials[-1].distributions
+        )
         # convert from optuna-type param config to wandb-type param config
         config: Dict[str, Dict[str, Any]] = defaultdict(dict)
         for param, value in new_trial.params.items():
@@ -558,7 +565,8 @@ def validate_optuna(public_api: PublicApi, settings_config: Dict[str, Any]) -> b
         import optuna  # noqa: F401
     except ImportError:
         wandb.termerror(
-            f"Optuna must be installed to validate user-provided configuration. Error: {traceback.format_exc()}"
+            "Optuna must be installed to validate user-provided configuration."
+            f" Error: {traceback.format_exc()}"
         )
         return False
 

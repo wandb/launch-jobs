@@ -1,11 +1,8 @@
 scheduler:
-   job: griffin_wb/launch-jobs-jobs_sweep_schedulers/job-OptunaScheduler:latest
+   job: <SCHEDULER JOB>
 
 # optuna specific config
-custom:
-   type: optuna
-   artifact_filepath: pythonic_config.py
-   artifact: griffin_wb/proj/optuna-funcs:latest
+settings:
    pruner:
       type: PercentilePruner
       args:
@@ -13,9 +10,12 @@ custom:
          n_min_trials: 1
          percentile: 0.25  # top 25% kept
 
-method: custom
-job: griffin_wb/proj/job-source-proj-simple.py:latest
+job: <TRAINING JOB>
 run_cap: 2
 metric:
   goal: maximize
   name: val_acc
+
+parameters:
+   epochs:
+      values: [10, 25, 100, 200]

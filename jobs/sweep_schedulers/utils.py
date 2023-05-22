@@ -1,5 +1,7 @@
 import argparse
 
+import click
+
 import wandb
 from wandb import termlog
 from wandb.apis.internal import Api
@@ -19,12 +21,12 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
     parser.add_argument("--entity", type=str, default=kwargs.get("entity"))
     parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--name", type=str, default=None)
-    parser.add_argument("--disable_git", type=bool, default=False)
+    parser.add_argument("--disable_git", type=bool, default=True)
     cli_args = parser.parse_args()
 
     name = cli_args.name or scheduler.__name__
     run = wandb.init(
-        settings={'disable_git': True} if cli_args.disable_git else {},
+        settings={"disable_git": True} if cli_args.disable_git else {},
         project=cli_args.project,
         entity=cli_args.entity,
     )
@@ -33,6 +35,9 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
 
     if not config.get("sweep_args", {}).get("sweep_id"):
         termlog("Job not configured to run a sweep, logging code and returning early.")
+        if cli_args.disable_git:  # too hard to figure out git repo job names
+            jobstr = f"{run.entity}/{run.project}/job-{name}:latest"
+            termlog(f"Creating job: {click.style(jobstr, fg='yellow')}")
         return
 
     args = config.get("sweep_args", {})
@@ -40,9 +45,5 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
     if cli_args.num_workers:
         num_workers = cli_args.num_workers
 
-    _scheduler = scheduler(
-        Api(),
-        run=run,
-        **args, **kwargs, num_workers=num_workers
-    )
+    _scheduler = scheduler(Api(), run=run, **args, **kwargs, num_workers=num_workers)
     _scheduler.start()
