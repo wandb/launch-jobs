@@ -81,9 +81,9 @@ class OptunaScheduler(Scheduler):
         self._optuna_runs: Dict[str, OptunaRun] = {}
 
         # Load optuna args from kwargs then check wandb run config
-        self._optuna_config = kwargs.get('custom')
+        self._optuna_config = kwargs.get('settings')
         if not self._optuna_config:
-            self._optuna_config = self._wandb_run.config.get("custom", {})
+            self._optuna_config = self._wandb_run.config.get("settings", {})
 
     @property
     def study(self) -> optuna.study.Study:
@@ -538,7 +538,6 @@ class OptunaScheduler(Scheduler):
 
     def _poll(self) -> None:
         self._poll_running_runs()
-        # wandb.termlog(f"{LOG_PREFIX}Study state:\n{self.formatted_trials}")
 
     def _exit(self) -> None:
         pass
@@ -548,7 +547,7 @@ class OptunaScheduler(Scheduler):
 
 
 # External validation functions
-def validate_optuna(public_api: PublicApi, custom_config: Dict[str, Any]) -> bool:
+def validate_optuna(public_api: PublicApi, settings_config: Dict[str, Any]) -> bool:
     """Accepts a user provided optuna configuration.
 
     optuna library must be installed in scope, otherwise returns False.
@@ -563,19 +562,19 @@ def validate_optuna(public_api: PublicApi, custom_config: Dict[str, Any]) -> boo
         )
         return False
 
-    if custom_config.get("pruner"):
-        if not validate_optuna_pruner(custom_config["pruner"]):
+    if settings_config.get("pruner"):
+        if not validate_optuna_pruner(settings_config["pruner"]):
             return False
 
-    if custom_config.get("sampler"):
-        if not validate_optuna_sampler(custom_config["sampler"]):
+    if settings_config.get("sampler"):
+        if not validate_optuna_sampler(settings_config["sampler"]):
             return False
 
-    if custom_config.get("artifact"):
+    if settings_config.get("artifact"):
         try:
-            _ = public_api.artifact(custom_config["artifact"])
+            _ = public_api.artifact(settings_config["artifact"])
         except Exception as e:
-            if ":" not in custom_config["artifact"]:
+            if ":" not in settings_config["artifact"]:
                 wandb.termerror("No alias (ex. :latest) found in artifact name")
             wandb.termerror(f"{e}")
             return False
