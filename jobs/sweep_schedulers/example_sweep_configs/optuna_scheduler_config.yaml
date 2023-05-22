@@ -1,14 +1,14 @@
 scheduler:
    job: <SCHEDULER JOB>
 
-# optuna specific config
-settings:
-   pruner:
-      type: PercentilePruner
-      args:
-         n_startup_trials: 2
-         n_min_trials: 1
-         percentile: 0.25  # top 25% kept
+   # optuna specific config
+   settings:
+      pruner:
+         type: PercentilePruner
+         args:
+            n_startup_trials: 2
+            n_min_trials: 1
+            percentile: 0.25  # top 25% kept
 
 job: <TRAINING JOB>
 run_cap: 2

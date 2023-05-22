@@ -41,9 +41,8 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
         return
 
     args = config.get("sweep_args", {})
-    num_workers = kwargs.pop("num_workers", None)
-    if cli_args.num_workers:
-        num_workers = cli_args.num_workers
+    if cli_args.num_workers:  # override
+        kwargs.update({"num_workers": cli_args.num_workers})
 
-    _scheduler = scheduler(Api(), run=run, **args, **kwargs, num_workers=num_workers)
+    _scheduler = scheduler(Api(), run=run, **args, **kwargs)
     _scheduler.start()
