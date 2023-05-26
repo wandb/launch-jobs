@@ -2,14 +2,16 @@ method: bayes
 metric:
    name: val_accuracy
    goal: maximize
+run_cap: 10
 
 # Use a training job here, NOT what we just created above
 # This is the job to be used in the execution of the actual sweep
-job: <TRAINING JOB>
+job: 'wandb/jobs/Hello World 2:latest'
 
 # This is where we use the scheduler job that is created in the run above
 scheduler:
-   job: <SCHEDULER JOB>
+   job: griffin_wb/proj/job-sweep-scheduler-job:latest
+   num_workers: 4
 
 # This is the parameter space to be used in the sweep
 parameters:
