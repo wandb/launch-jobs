@@ -1,4 +1,3 @@
-method: bayes
 metric:
    name: val_accuracy
    goal: maximize
@@ -12,6 +11,8 @@ job: 'wandb/jobs/Hello World 2:latest'
 scheduler:
    job: griffin_wb/proj/job-sweep-scheduler-job:latest
    num_workers: 4
+   settings:
+      method: bayes
 
 # This is the parameter space to be used in the sweep
 parameters:
