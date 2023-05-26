@@ -30,11 +30,11 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
         project=cli_args.project,
         entity=cli_args.entity,
     )
-    run.log_code(name=name, exclude_fn=lambda x: x.startswith("_"))
     config = run.config
 
     if not config.get("sweep_args", {}).get("sweep_id"):
         termlog("Job not configured to run a sweep, logging code and returning early.")
+        run.log_code(name=name, exclude_fn=lambda x: x.startswith("_"))
         if cli_args.disable_git:  # too hard to figure out git repo job names
             jobstr = f"{run.entity}/{run.project}/job-{name}:latest"
             termlog(f"Creating job: {click.style(jobstr, fg='yellow')}")
