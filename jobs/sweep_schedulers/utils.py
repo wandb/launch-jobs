@@ -1,7 +1,6 @@
 import argparse
 
 import click
-
 import wandb
 from wandb import termlog
 from wandb.apis.internal import Api

@@ -1,9 +1,23 @@
+## Sweeps on launch -- custom scheduler jobs
+
 This folder contains jobs that can be used as schedulers for launch sweeps. 
 
-The intended use is to clone the repo, modifying scripts with impunity, and then:
+### Quickstart
 
-1. `python wandb_scheduler.py`
-2. Use the job that is created in a sweep config file like: 
+To run an example, ensure a launch queue is active, and run: 
+
+```bash
+wandb launch-sweep example_sweep_configs/wandb-scheduler-config.yaml --queue <queue> --project <project>
+```
+
+
+### Custom scheduler jobs
+
+The intended use is to clone the repo, modifying scripts with impunity, and then create jobs from them, with:
+
+`python wandb_scheduler.py`
+
+Once a custom scheduler job is created, they can be used in launch-sweep configuration files in the following way:
 
 ```yaml
 method: bayes
@@ -29,5 +43,5 @@ parameters:
 
 ### Important Notes: 
 
-1. There are **two** different jobs that must be included in the sweep config! One is the training job, which can be created by running a local wandb run that has a call to `run.log_code()`. The second job is the one created by running the schedulers in this folder. 
+1. There are **two** different jobs that must be included in the sweep config! One is the training job, which can be created by running a local wandb run that has a call to `run.log_code()`. The second job is the one created by running the schedulers in this folder (job creation automatically handled). 
 2. For the `wandb_scheduler`, use the `method` parameter in the sweep config as usual [bayes, grid, random]. For other schedulers, please set `method: custom`

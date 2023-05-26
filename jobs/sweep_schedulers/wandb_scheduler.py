@@ -4,9 +4,10 @@ from pprint import pformat as pf
 from typing import Any, Dict, List, Optional
 
 import wandb
-from utils import setup_scheduler
 from wandb.sdk.launch.sweeps.scheduler import (LOG_PREFIX, RunState, Scheduler,
                                                SweepRun)
+
+from utils import setup_scheduler
 
 _logger = logging.getLogger(__name__)
 
