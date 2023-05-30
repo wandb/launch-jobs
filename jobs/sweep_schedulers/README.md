@@ -4,10 +4,10 @@ This folder contains jobs that can be used as schedulers for launch sweeps.
 
 ### Quickstart
 
-To run an example, ensure a launch queue is active, and run: 
+To run an example, **ensure the target launch queue is active**, and run: 
 
 ```bash
-wandb launch-sweep example_sweep_configs/wandb-scheduler-config.yaml --queue <queue> --project <project>
+wandb launch-sweep example_sweep_configs/wandb_scheduler_config.yaml --queue <queue> --project <project>
 ```
 
 
