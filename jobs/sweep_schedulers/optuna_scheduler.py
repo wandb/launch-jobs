@@ -12,16 +12,15 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import click
 import optuna
-
 import wandb
 from wandb.apis.internal import Api
 from wandb.apis.public import Api as PublicApi
-from wandb.apis.public import Artifact, QueuedRun, Run
+from wandb.apis.public import QueuedRun, Run
+from wandb.sdk.artifacts.public_artifact import Artifact
 from wandb.sdk.launch.sweeps import SchedulerError
 from wandb.sdk.launch.sweeps.scheduler import Scheduler, SweepRun
 
 from utils import setup_scheduler
-
 
 logger = logging.getLogger(__name__)
 optuna.logging.set_verbosity(optuna.logging.WARNING)

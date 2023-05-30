@@ -1,7 +1,7 @@
 import argparse
+import os
 
 import click
-
 import wandb
 from wandb import termlog
 from wandb.apis.internal import Api
@@ -21,23 +21,19 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
     parser.add_argument("--entity", type=str, default=kwargs.get("entity"))
     parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--name", type=str, default=None)
-    parser.add_argument("--disable_git", type=bool, default=True)
+    parser.add_argument("--enable_git", action="store_true", default=False)
     cli_args = parser.parse_args()
 
     name = cli_args.name or scheduler.__name__
     run = wandb.init(
-        settings={"disable_git": True} if cli_args.disable_git else {},
+        settings={"disable_git": True} if not cli_args.enable_git else {},
         project=cli_args.project,
         entity=cli_args.entity,
     )
     config = run.config
 
     if not config.get("sweep_args", {}).get("sweep_id"):
-        termlog("Job not configured to run a sweep, logging code and returning early.")
-        run.log_code(name=name, exclude_fn=lambda x: x.startswith("_"))
-        if cli_args.disable_git:  # too hard to figure out git repo job names
-            jobstr = f"{run.entity}/{run.project}/job-{name}:latest"
-            termlog(f"Creating job: {click.style(jobstr, fg='yellow')}")
+        _handle_job_logic(run, name, cli_args.enable_git)
         return
 
     args = config.get("sweep_args", {})
@@ -46,3 +42,25 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
 
     _scheduler = scheduler(Api(), run=run, **args, **kwargs)
     _scheduler.start()
+
+
+def _handle_job_logic(run, name, enable_git=False) -> None:
+    termlog("\nJob not configured to run a sweep, logging code and returning early.")
+    jobstr = f"{run.entity}/{run.project}/job"
+
+    if os.environ.get("WANDB_DOCKER"):
+        termlog("Identified 'WANDB_DOCKER' environment var, creating image job...")
+        tag = os.environ.get("WANDB_DOCKER", "").split(":")
+        if len(tag) == 2:
+            jobstr += f"-{tag[0]}_{tag[-1]}:latest"
+        else:
+            jobstr = f"found here: https://wandb.ai/{jobstr}s/"
+        termlog(f"Creating image job {click.style(jobstr, fg='yellow')}\n")
+    elif not enable_git:
+        jobstr += f"-{name}:latest"
+        termlog(f"Creating code-artifact job: {click.style(jobstr, fg='yellow')}\n")
+    else:
+        _s = click.style(f"https://wandb.ai/{jobstr}s/", fg="yellow")
+        termlog(f"Creating repo-artifact job found here: {_s}\n")
+        run.log_code(name=name, exclude_fn=lambda x: x.startswith("_"))
+    return

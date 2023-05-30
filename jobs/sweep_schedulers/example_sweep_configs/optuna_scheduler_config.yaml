@@ -1,5 +1,6 @@
 scheduler:
-   job: <SCHEDULER JOB>
+   job: griffin_wb/proj/job-optuna-scheduler_latest:latest
+   resource: local-container
 
    # optuna specific config
    settings:
@@ -10,7 +11,7 @@ scheduler:
             n_min_trials: 1
             percentile: 0.25  # top 25% kept
 
-job: <TRAINING JOB>
+job: griffin_wb/proj/job-source-proj-simple.py:latest
 run_cap: 2
 metric:
   goal: maximize
