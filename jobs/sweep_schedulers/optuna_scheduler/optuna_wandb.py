@@ -2,8 +2,11 @@ import optuna
 
 
 def objective(trial):
-    database = trial.suggest_categorical("database", ["small", "medium", "large"])
+    database = trial.suggest_categorical("database-123", ["small", "medium", "large"])
     randomize = None  # init for printing
+
+    param1 = trial.suggest_int("param1", 0, 10)
+    sleep = trial.suggest_float("sleep", 0.1, 0.3)
 
     if database in ["small", "large"]:
         batch_size = trial.suggest_int("batch_size", 16, 64)
@@ -35,4 +38,4 @@ def sampler():
 
 
 def pruner():
-    return optuna.pruners.PatientPruner(optuna.pruners.MedianPruner(), patience=1)
+    return optuna.pruners.SuccessiveHalvingPruner()
