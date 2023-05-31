@@ -19,7 +19,7 @@ The intended use is to clone the repo, modifying scripts with impunity, and then
 Note: There are three possible job-types that can be created from this script, in the following ways:
 1. (default) Code-Artifact job. No flags required, logs the code in the current directory and constructs a job with the code.
 2. Git job. Pass in `--enable_git` to create a git-based job, which uses the current git hash as the source of the job.
-3. Container job. Build a container using the provided Dockerfile, and run `wandb launch -d <image-name>`. This creates a job that points to an image and will be pulled before executing (requires registry setup for remote launch resources). 
+3. Container job. Build a container using the provided Dockerfile (`docker build . -t <image-name>`), and run `wandb launch -d <image-name>`. This creates a job that points to an image and will be pulled before executing (requires registry setup for remote launch resources).
 
 Once a custom scheduler job is created, they can be used in launch-sweep configuration files in the following way:
 

@@ -1,7 +1,7 @@
 scheduler:
    # Scheduler job, either publicly available or created locally
    # job: griffin_wb/public/job-wandb_job_sweep_scheduler_optuna_latest:latest
-   job: griffin_wb/proj/job-opt-test123:latest
+   job: griffin_wb/public/job-wandb_job_sweep_scheduler_optuna:latest
    resource: local-container
 
    # optuna specific config

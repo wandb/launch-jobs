@@ -1,17 +1,16 @@
 # optuna_artifact.yaml
-description: An advanced configuration for an Optuna scheduler
+scheduler:
+  # TODO(gst): make public wandb entity Optuna Scheduler job
+  job: griffin_wb/public/job-wandb_job_sweep_scheduler_optuna:latest
+  resource: local-container
+  num_workers: 2
+  settings:
+    optuna_source: optuna_wandb.py
+
+description: An Optuna scheduler using parameters from a pythonic search space
 job: griffin_wb/public/job-source-public-train.py:latest
 run_cap: 5
 
 metric:
   name: val_acc
   goal: maximize
-
-scheduler:
-  # TODO(gst): make public wandb entity Optuna Scheduler job
-  # job: griffin_wb/public/job-wandb_job_sweep_scheduler_optuna_latest:latest
-  job: griffin_wb/proj/job-opt-test123:latest
-  resource: local-container
-  num_workers: 2
-  settings:
-    optuna_source: optuna_wandb.py
