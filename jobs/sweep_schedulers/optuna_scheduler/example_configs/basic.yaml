@@ -15,6 +15,7 @@ scheduler:
 # Use a training job here, NOT the scheduler job
 job: griffin_wb/public/job-source-public-train.py:latest
 run_cap: 5
+# metric is required for the Optuna scheduler
 metric:
   goal: maximize
   name: val_acc

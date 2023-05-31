@@ -2,9 +2,11 @@
 scheduler:
   # TODO(gst): make public wandb entity Optuna Scheduler job
   job: griffin_wb/public/job-wandb_job_sweep_scheduler_optuna:latest
-  resource: local-container
-  num_workers: 2
+  resource: local-container  # required for image-source jobs
+  num_workers: 2  # number of concurrent workers
   settings:
+    # Using the local file optuna_wandb.py as a pythonic search space,
+    # sweep hyperparameters are creating here
     optuna_source: optuna_wandb.py
 
 description: An Optuna scheduler using parameters from a pythonic search space
@@ -12,5 +14,5 @@ job: griffin_wb/public/job-source-public-train.py:latest
 run_cap: 5
 
 metric:
-  name: val_acc
+  name: val_acc  # required for optuna pruning logic
   goal: maximize
