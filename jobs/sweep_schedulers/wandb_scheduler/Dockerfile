@@ -6,5 +6,4 @@ RUN pip install git+https://github.com/wandb/wandb.git@main#egg=wandb
 
 COPY . .
 
-# Fill me in with "wandb_scheduler.py" or "optuna_scheduler.py" etc.
-ENTRYPOINT [ "python", "optuna_scheduler.py" ]
+ENTRYPOINT [ "python", "wandb_scheduler.py" ]

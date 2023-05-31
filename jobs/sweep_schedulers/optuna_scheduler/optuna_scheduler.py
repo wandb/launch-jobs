@@ -10,6 +10,7 @@ from importlib.machinery import SourceFileLoader
 from types import ModuleType
 from typing import Any, Dict, List, Optional, Tuple
 
+import argparse
 import click
 import optuna
 import wandb
@@ -20,7 +21,6 @@ from wandb.sdk.artifacts.public_artifact import Artifact
 from wandb.sdk.launch.sweeps import SchedulerError
 from wandb.sdk.launch.sweeps.scheduler import Scheduler, SweepRun
 
-from utils import setup_scheduler
 
 logger = logging.getLogger(__name__)
 optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -153,12 +153,11 @@ class OptunaScheduler(Scheduler):
                 f"{LOG_PREFIX}User provided study has storage:{study._storage}"
             )
 
-        # TODO(gst): implement *requirements*
         return None
 
-    def _load_optuna_from_user_provided_artifact(
+    def _load_optuna_classes(
         self,
-        artifact_name: str,
+        filepath: str,
     ) -> Tuple[
         Optional[optuna.Study],
         Optional[optuna.pruners.BasePruner],
@@ -171,27 +170,11 @@ class OptunaScheduler(Scheduler):
             pruner: a custom optuna pruner supplied by user
             sampler: a custom optuna sampler supplied by user
         """
-        wandb.termlog(f"{LOG_PREFIX}User set optuna.artifact, attempting download.")
-
-        # TODO(gst): also make compatible with local file
-        # log the artifact for the user at sweep creation CLI time
-
-        # load user-set optuna class definition file
-        artifact = self._wandb_run.use_artifact(artifact_name, type="optuna")
-        if not artifact:
-            raise SchedulerError(
-                f"{LOG_PREFIX}Failed to load artifact: {artifact_name}"
-            )
-
-        path = artifact.download()
-        optuna_filepath = self._optuna_config.get(
-            "artifact_filepath", OptunaComponents.main_file.value
-        )
-        mod, err = _get_module("optuna", f"{path}/{optuna_filepath}")
+        mod, err = _get_module("optuna", filepath)
         if not mod:
             raise SchedulerError(
-                f"{LOG_PREFIX}Failed to load optuna from path {optuna_filepath} "
-                f" in artifact: {artifact_name} with error: {err}"
+                f"{LOG_PREFIX}Failed to load optuna from path {filepath} "
+                f" with error: {err}"
             )
 
         # Set custom optuna trial creation method
@@ -248,17 +231,52 @@ class OptunaScheduler(Scheduler):
 
         return None
 
+    def _load_file_from_artifact(self, artifact_name: str) -> str:
+        wandb.termlog(f"{LOG_PREFIX}User set optuna.artifact, attempting download.")
+
+        # load user-set optuna class definition file
+        artifact = self._wandb_run.use_artifact(artifact_name, type="optuna")
+        if not artifact:
+            raise SchedulerError(
+                f"{LOG_PREFIX}Failed to load artifact: {artifact_name}"
+            )
+
+        path = artifact.download()
+        optuna_filepath = self._optuna_config.get(
+            "optuna_source_filename", OptunaComponents.main_file.value
+        )
+        return f"{path}/{optuna_filepath}"
+
+    def _try_make_existing_objects(
+        self, optuna_source: Optional[str]
+    ) -> Tuple[
+        Optional[optuna.Study],
+        Optional[optuna.pruners.BasePruner],
+        Optional[optuna.samplers.BaseSampler],
+    ]:
+        if not optuna_source:
+            return None, None, None
+
+        optuna_file = None
+        if ":" in optuna_source:
+            optuna_file = self._load_file_from_artifact(optuna_source)
+        elif ".py" in optuna_source:  # raw filepath
+            optuna_file = optuna_source
+        else:
+            raise SchedulerError(
+                f"Provided optuna_source='{optuna_source}' not python file or artifact"
+            )
+
+        return self._load_optuna_classes(optuna_file)
+
     def _load_optuna(self) -> None:
         """If our run was resumed, attempt to restore optuna artifacts from run state.
 
         Create an optuna study with a sqlite backened for loose state management
         """
-        study, pruner, sampler = None, None, None
-        optuna_artifact_name = self._optuna_config.get("artifact")
-        if optuna_artifact_name:
-            study, pruner, sampler = self._load_optuna_from_user_provided_artifact(
-                optuna_artifact_name
-            )
+        study, pruner, sampler = self._try_make_existing_objects(
+            self._optuna_config.get("optuna_source")
+        )
 
         existing_storage = None
         if self._wandb_run.resumed or self._kwargs.get("resumed"):
@@ -266,7 +284,9 @@ class OptunaScheduler(Scheduler):
 
         if study:  # user provided a valid study in downloaded artifact
             if existing_storage:
-                wandb.termwarn("Resuming state w/ user-provided study is unsupported")
+                wandb.termwarn(
+                    f"{LOG_PREFIX}Resuming state with user-provided study is unsupported"
+                )
             self._study = study
             wandb.termlog(self.study_string)
             return
@@ -674,6 +694,70 @@ def load_optuna_sampler(
         return optuna.samplers.QMCSampler(**args)
 
     raise Exception(f"Optuna sampler type: {type_} not supported")
+
+
+def setup_scheduler(scheduler: Scheduler, **kwargs):
+    """Setup a run to log a scheduler job.
+
+    If this job is triggered using a sweep config, it will
+    become a sweep scheduler, automatically managing a launch sweep
+    Otherwise, we just log the code, creating a job that can be
+    inserted into a sweep config."""
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--project", type=str, default=kwargs.get("project"))
+    parser.add_argument("--entity", type=str, default=kwargs.get("entity"))
+    parser.add_argument("--num_workers", type=int, default=1)
+    parser.add_argument("--name", type=str, default=None)
+    parser.add_argument("--enable_git", action="store_true", default=False)
+    cli_args = parser.parse_args()
+
+    name = cli_args.name or scheduler.__name__
+    run = wandb.init(
+        settings={"disable_git": True} if not cli_args.enable_git else {},
+        project=cli_args.project,
+        entity=cli_args.entity,
+    )
+    config = run.config
+
+    if not config.get("sweep_args", {}).get("sweep_id"):
+        _handle_job_logic(run, name, cli_args.enable_git)
+        return
+
+    args = config.get("sweep_args", {})
+    if cli_args.num_workers:  # override
+        kwargs.update({"num_workers": cli_args.num_workers})
+
+    _scheduler = scheduler(Api(), run=run, **args, **kwargs)
+    _scheduler.start()
+
+
+def _handle_job_logic(run, name, enable_git=False) -> None:
+    wandb.termlog(
+        "\nJob not configured to run a sweep, logging code and returning early."
+    )
+    jobstr = f"{run.entity}/{run.project}/job"
+
+    if os.environ.get("WANDB_DOCKER"):
+        wandb.termlog(
+            "Identified 'WANDB_DOCKER' environment var, creating image job..."
+        )
+        tag = os.environ.get("WANDB_DOCKER", "").split(":")
+        if len(tag) == 2:
+            jobstr += f"-{tag[0].replace('/', '_')}_{tag[-1]}:latest"
+        else:
+            jobstr = f"found here: https://wandb.ai/{jobstr}s/"
+        wandb.termlog(f"Creating image job {click.style(jobstr, fg='yellow')}\n")
+    elif not enable_git:
+        jobstr += f"-{name}:latest"
+        wandb.termlog(
+            f"Creating code-artifact job: {click.style(jobstr, fg='yellow')}\n"
+        )
+    else:
+        _s = click.style(f"https://wandb.ai/{jobstr}s/", fg="yellow")
+        wandb.termlog(f"Creating repo-artifact job found here: {_s}\n")
+        run.log_code(name=name, exclude_fn=lambda x: x.startswith("_"))
+    return
 
 
 if __name__ == "__main__":
