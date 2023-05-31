@@ -13,8 +13,8 @@ scheduler:
             percentile: 0.25  # top 25% kept
 
 # Use a training job here, NOT the scheduler job
-job: griffin_wb/proj/job-source-proj-simple.py:latest
-run_cap: 2
+job: griffin_wb/public/job-source-public-train.py:latest
+run_cap: 5
 metric:
   goal: maximize
   name: val_acc
@@ -22,3 +22,6 @@ metric:
 parameters:
    epochs:
       values: [10, 25, 100, 200]
+   param1:
+      min: 0
+      max: 10
