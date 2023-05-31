@@ -52,7 +52,7 @@ def _handle_job_logic(run, name, enable_git=False) -> None:
         termlog("Identified 'WANDB_DOCKER' environment var, creating image job...")
         tag = os.environ.get("WANDB_DOCKER", "").split(":")
         if len(tag) == 2:
-            jobstr += f"-{tag[0]}_{tag[-1]}:latest"
+            jobstr += f"-{tag[0].replace('/', '_')}_{tag[-1]}:latest"
         else:
             jobstr = f"found here: https://wandb.ai/{jobstr}s/"
         termlog(f"Creating image job {click.style(jobstr, fg='yellow')}\n")
