@@ -12,8 +12,8 @@ In this repository, we have curated a set of popular jobs for common tasks, such
 - [Deploy to SageMaker](https://github.com/wandb/launch-jobs/tree/main/jobs/deploy_to_sagemaker_endpoints): Deploy a model to SageMaker Endpoints
 
 ## Evaluate and optimize models
-- [Run OpenAI Evals](https://github.com/wandb/launch-jobs/tree/main/jobs/openai_evals) to evaluate LLMs, and follow along with the [companion guide](https://wandb.ai/wandb_fc/openai-evals/reports/OpenAI-Evals-Demo-Using-W-B-Prompts-to-Run-Evaluations--Vmlldzo0MTI4ODA3).
-- [Use NVIDIA TensorRT](https://github.com/wandb/launch-jobs/tree/main/jobs/gpu_optimize_with_tensor_rt) to quantize and optimize a model.
+- [Run OpenAI Evals](https://github.com/wandb/launch-jobs/tree/main/jobs/openai_evals) to evaluate LLMs
+- [Use NVIDIA TensorRT](https://github.com/wandb/launch-jobs/tree/main/jobs/gpu_optimize_with_tensor_rt) to quantize and optimize a model
 
 ## Connect to external services
 - [Dispatch GitHub Actions](https://github.com/wandb/launch-jobs/tree/main/jobs/github_actions_workflow_dispatch): Trigger a workflow to run in GitHub Actions
