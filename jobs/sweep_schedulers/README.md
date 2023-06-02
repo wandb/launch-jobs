@@ -1,20 +1,45 @@
 ## Sweeps on launch -- custom scheduler jobs
 
-This folder contains jobs that can be used as schedulers for launch sweeps. 
+This folder contains jobs that can be used as schedulers for launch sweeps. For examples using jobs that have already been created, head over to the `wandb/examples` repo [here](https://github.com/wandb/examples/tree/master/examples/launch/launch-sweeps).
 
-### Quickstart
+### Quickstart using premade jobs
 
-To run an example using the wandb sweep logic, **ensure the target launch queue is active**, and run: 
+To run an example using the Wandb sweep logic, **ensure the target launch queue is active** (more info [here](https://docs.wandb.ai/guides/launch/quickstart)), and run:
 
 ```bash
-wandb launch-sweep wandb_scheduler/example_configs/basic.yaml --queue <queue> --project <project>
+wandb launch-sweep wandb_scheduler/example_configs/basic.yaml --queue <queue> --project <project> --entity <entity>
+```
+
+This basic config contains a few example parameters to get a scheduler running, shown below: 
+
+```yaml
+# basic.yaml
+scheduler:
+   job: 'wandb/jobs/Wandb Scheduler Image Job:latest'
+   resource: local-container  # required for image jobs
+
+   settings:
+      method: bayes  # required to specify method here for Wandb scheduler 
+
+job: 'wandb/jobs/Example Train Job:latest'
+run_cap: 5
+metric:
+  goal: maximize
+  name: val_acc
+
+parameters:
+   param1:
+      min: 0
+      max: 10
 ```
 
 ### Custom scheduler jobs
 
-The intended use is to clone the repo, modifying scripts with impunity, and then create jobs from them, with:
+While the above example uses a pre-made scheduler job (`'wandb/jobs/Wandb Scheduler Image Job:latest'`), they can also be created using this repo. Clone the repo, modifying the `*_scheduler` scripts with impunity, and then create jobs from them, with:
 
 `python wandb_scheduler/wandb_scheduler.py` or `python optuna_scheduler/optuna_scheduler.py`
+
+For a specific example of a simple modification to the `wandb_scheduler.py` file, check out the example in `wandb/examples` [here](https://github.com/wandb/examples/tree/master/examples/launch/launch-sweeps/custom-scheduler).
 
 Note: There are three possible job-types that can be created from this script, in the following ways:
 1. (default) Code-Artifact job. No flags required, logs the code in the current directory and constructs a job with the code.
@@ -24,8 +49,6 @@ Note: There are three possible job-types that can be created from this script, i
 Once a custom scheduler job is created, they can be used in launch-sweep configuration files in the following way:
 
 ```yaml
-# template.yaml
-method: custom
 metric:
    name: validation_accuracy
    goal: maximize
@@ -34,25 +57,27 @@ metric:
 # This is the job to be used in the execution of the actual sweep
 job: <TRAINING JOB>
 
-# This is where we use the scheduler job that is created in the run above
 scheduler:
+   # Use the scheduler job that is created by running python *_scheduler.py
    job: <SCHEDULER JOB>
    # Required if the job is sourced from an image, otherwise the scheduler
    # defaults to running in thread within the launch agent
    resource: local-container
 
-   # When using a W&B backend (not Optuna), set the sweep method here
+   # Set settings for the scheduler here
+   # this is passed into scheduler wandb run, and can be accessed in the scheduler with
+   # self._wandb_run.config.get("settings", {}) (or in the Optuna scheduler self._optuna_config)
    settings:
+      # When using a W&B backend (WandbScheduler from wandb_scheduler.py)
+      #    set the sweep method here
       method: bayes
-
 
 parameters:
    ...
-
 ```
 
 3. Then, to run a launch-sweep, use the CLI command: 
-   `wandb launch-sweep <config.yaml> --queue <queue> --project <project>`
+   `wandb launch-sweep <config.yaml> --queue <queue> --project <project> --entity <entity>`
 
 ### Important Notes: 
 
@@ -61,4 +86,4 @@ parameters:
 
 ### Optuna 
 
-More information specific to the Wandb-Optuna sweep scheduler can be found in the `wandb/examples` repo [here](https://github.com/wandb/examples/launch/launch-sweeps/)
+More information specific to the Wandb-Optuna sweep scheduler can be found in the `wandb/examples` repo [here](https://github.com/wandb/examples/tree/master/examples/launch/launch-sweeps/optuna-scheduler)

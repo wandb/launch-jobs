@@ -1,6 +1,6 @@
 scheduler:
    # Scheduler job, either publicly available or created locally
-   job: griffin_wb/public/job-wandb_job_sweep_scheduler_optuna:latest
+   job: 'wandb/jobs/Optuna Scheduler Image Job:latest'
    resource: local-container
 
    # optuna specific config
@@ -13,7 +13,7 @@ scheduler:
             percentile: 0.25  # top 25% kept
 
 # Use a training job here, NOT the scheduler job
-job: griffin_wb/public/job-source-public-train.py:latest
+job: 'wandb/jobs/Example Train Job:latest'
 run_cap: 5
 # metric is required for the Optuna scheduler
 metric:

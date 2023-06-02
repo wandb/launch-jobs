@@ -1,16 +1,19 @@
 # optuna_artifact.yaml
+description: An Optuna scheduler using parameters from a pythonic search space
+
 scheduler:
-  # TODO(gst): make public wandb entity Optuna Scheduler job
-  job: griffin_wb/public/job-wandb_job_sweep_scheduler_optuna:latest
+  job: 'wandb/jobs/Optuna Scheduler Image Job:latest'
   resource: local-container  # required for image-source jobs
   num_workers: 2  # number of concurrent workers
   settings:
     # Using the local file optuna_wandb.py as a pythonic search space,
     # sweep hyperparameters are creating here
     optuna_source: optuna_wandb.py
+    # This file can also be loaded from an artifact, like: 
+    # optuna_source: <entity>/<project>/<artifact-name>:<alias>
+    # optuna_source_filename: pythonic_searchspace_file.py
 
-description: An Optuna scheduler using parameters from a pythonic search space
-job: griffin_wb/public/job-source-public-train.py:latest
+job: 'wandb/jobs/Example Train Job:latest'
 run_cap: 5
 
 metric:
