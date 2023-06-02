@@ -33,6 +33,14 @@ parameters:
       max: 10
 ```
 
+Or, to run the pre-made Optuna Scheduler job, run: 
+
+```bash
+wandb launch-sweep optuna_scheduler/example_configs/basic.yaml --queue <queue> --project <project> --entity <entity>
+```
+
+More information specific to the Optuna sweep scheduler can be found in the `wandb/examples` repo [here](https://github.com/wandb/examples/tree/master/examples/launch/launch-sweeps/optuna-scheduler)
+
 ### Custom scheduler jobs
 
 While the above example uses a pre-made scheduler job (`'wandb/jobs/Wandb Scheduler Image Job:latest'`), they can also be created using this repo. Clone the repo, modifying the `*_scheduler` scripts with impunity, and then create jobs from them, with:
@@ -84,6 +92,3 @@ parameters:
 1. There are **two** different jobs that must be included in the sweep config! One is the training job, which can be created by running a local wandb run that has a call to `run.log_code()` (or is run inside of a container with the `WANDB_DOCKER` environment variable set). The second job is the one created by running the schedulers in this folder (job creation automatically handled). 
 2. For the `wandb_scheduler.py`, set the `method` of the sweep (bayes, grid, random) in the `scheduler.settings.method` key. All sweep schedulers sourced from jobs require `method: custom` in the top-level of the sweep configuration.
 
-### Optuna 
-
-More information specific to the Wandb-Optuna sweep scheduler can be found in the `wandb/examples` repo [here](https://github.com/wandb/examples/tree/master/examples/launch/launch-sweeps/optuna-scheduler)
