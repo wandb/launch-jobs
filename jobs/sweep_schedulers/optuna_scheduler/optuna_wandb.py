@@ -5,8 +5,7 @@ def objective(trial):
     database = trial.suggest_categorical("database-123", ["small", "medium", "large"])
     randomize = None  # init for printing
 
-    trial.suggest_int("param1", 0, 10)
-    trial.suggest_float("sleep", 0.1, 0.3)
+    param1 = trial.suggest_int("param1", 0, 10)
 
     if database in ["small", "large"]:
         batch_size = trial.suggest_int("batch_size", 16, 64)
@@ -16,7 +15,7 @@ def objective(trial):
     else:
         batch_size = trial.suggest_int("batch_size", 64, 256)
 
-    print(f"{database=} {batch_size=} {randomize=}")
+    print(f"{database=} {batch_size=} {randomize=} {param1=}")
 
     return -1
 
