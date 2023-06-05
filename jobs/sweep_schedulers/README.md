@@ -43,16 +43,16 @@ More information specific to the Optuna sweep scheduler can be found in the `wan
 
 ### Custom scheduler jobs
 
-While the above example uses a pre-made scheduler job (`'wandb/jobs/Wandb Scheduler Image Job:latest'`), they can also be created using this repo. Clone the repo, modifying the `*_scheduler` scripts with impunity, and then create jobs from them, with:
+While the above example uses a pre-made scheduler job (`'wandb/jobs/Wandb Scheduler Image Job:latest'`), it is also possible to create completely custom sweep scheduler jobs. Using a few simple utility methods, available in the `Scheduler` class within the `wandb` python package, any algorithm for sweep hyperparameter suggestion can be turned into a controller for sweeps. Easily customize the Wandb and Optuna Schedulers using this repo. Clone the repo, modify the `*_scheduler` scripts with impunity, and then create jobs from them, with:
 
 `python wandb_scheduler/wandb_scheduler.py` or `python optuna_scheduler/optuna_scheduler.py`
 
 For a specific example of a simple modification to the `wandb_scheduler.py` file, check out the example in `wandb/examples` [here](https://github.com/wandb/examples/tree/master/examples/launch/launch-sweeps/custom-scheduler).
 
-Note: There are three possible job-types that can be created from this script, in the following ways:
+Note: There are three different types of jobs (code, git, image):
 1. (default) Code-Artifact job. No flags required, logs the code in the current directory and constructs a job with the code.
 2. Git job. Pass in `--enable_git` to create a git-based job, which uses the current git hash as the source of the job.
-3. Container job. Build a container using the provided Dockerfile (`docker build . -t <image-name>`), and run `wandb launch -d <image-name>`. This creates a job that points to an image and will be pulled before executing (requires registry setup for remote launch resources).
+3. Image job. Build a container using the provided Dockerfile (`docker build . -t <image-name>`), and run `wandb launch -d <image-name>`. This creates a job that points to an image and will be pulled before executing (requires registry setup for remote launch resources).
 
 Once a custom scheduler job is created, they can be used in launch-sweep configuration files in the following way:
 

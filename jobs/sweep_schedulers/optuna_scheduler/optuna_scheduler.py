@@ -330,7 +330,7 @@ class OptunaScheduler(Scheduler):
         if study:  # user provided a valid study in downloaded artifact
             if existing_storage:
                 wandb.termwarn(
-                    f"{LOG_PREFIX}Resuming state with user-provided study is unsupported"
+                    f"{LOG_PREFIX}Resuming state unsupported with user-provided study"
                 )
             self._study = study
             wandb.termlog(self.study_string)
