@@ -23,7 +23,7 @@ def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
     train_config = run.config
 
     # get training parameters from config
-    epochs = train_config.get("epochs", 20)
+    epochs = train_config.get("epochs", 10)
     learning_rate = train_config.get("learning_rate", 0.001)
     steps_per_epoch = train_config.get("steps_per_epoch", 100)
 
