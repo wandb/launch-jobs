@@ -186,17 +186,33 @@ def build(
     exec_stream(command)
 
 
+def _get_image_paths_dir_and_subdir(repo: str):
+    """Add top level and sub-directory paths that contain dockerfiles"""
+    image_paths = []
+    for dir in os.listdir(os.path.join(repo, "jobs")):
+        if not os.path.isdir(os.path.join(repo, "jobs", dir)):
+            continue
+        
+        # if top level dir has Dockerfile, thats the image dir
+        if os.path.exists(os.path.join(repo, "jobs", dir, "Dockerfile")):
+            image_paths += [dir]
+            continue
+        
+        # go through subdirs for folders that container Dockerfile
+        for subdir in os.listdir(os.path.join(repo, "jobs", dir)):
+            if os.path.isdir(os.path.join(repo, "jobs", dir, subdir)):
+                if os.path.exists(os.path.join(repo, "jobs", dir, subdir, "Dockerfile")):
+                    image_paths += [os.path.join(dir, subdir)]
+    return image_paths
+
+
 if __name__ == "__main__":
     repo = os.path.dirname(os.path.realpath(__file__))
-    for image in os.listdir(os.path.join(repo, "jobs")):
-        if not os.path.isdir(os.path.join(repo, "jobs", image)):
-            continue
-
-        if not os.path.exists(os.path.join(repo, "jobs", image, "Dockerfile")):
-            continue
-
+    image_paths = _get_image_paths_dir_and_subdir(repo)
+    
+    for image in image_paths:
         extra_write_tags = []
-
+        
         if GIT_BRANCH_DIRTY == "master":
             extra_write_tags.append("latest")
 
