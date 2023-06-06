@@ -1,10 +1,10 @@
 """Example training job"""
-import wandb
-
-import time
-import random
 import argparse
-from typing import Optional, Any
+import random
+import time
+from typing import Any, Optional
+
+import wandb
 
 
 def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
@@ -24,7 +24,7 @@ def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
 
     # iterate through epochs, mocking a model fitting process
     for i in range(epochs):
-        metric_val = _fit_model(learning_rate, i+1, bias)
+        metric_val = _fit_model(learning_rate, i + 1, bias)
 
         # log to wandb, print to console, and sleep to mimic compute
         run.log({metric: metric_val})
@@ -33,7 +33,7 @@ def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
 
 
 def _fit_model(learning_rate: float, i: int, bias: float = 0.0):
-    return max((1000/(i**1.5) + (5 * learning_rate + random.random())) + bias, 0)
+    return max((1000 / (i**1.5) + (5 * learning_rate + random.random())) + bias, 0)
 
 
 def main():
