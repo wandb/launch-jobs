@@ -1,6 +1,6 @@
 scheduler:
    # Scheduler job, either publicly available or created locally
-   job: 'wandb/sweep-jobs/Optuna sweep scheduler job:latest'
+   job: 'wandb/sweep-jobs/job-optuna-sweep-scheduler:latest'
    resource: local-container
 
    # optuna specific config
@@ -13,12 +13,12 @@ scheduler:
             percentile: 0.25  # top 25% kept
 
 # Use a training job here, NOT the scheduler job
-job: 'wandb/sweep-jobs/Fashion MNIST Train:latest'
+job: 'wandb/sweep-jobs/job-fashion-MNIST-train:latest'
 run_cap: 5
 # metric is required for the Optuna scheduler
 metric:
   goal: minimize
-  name: loss
+  name: val_loss
 
 parameters:
    epochs:
