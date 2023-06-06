@@ -1,7 +1,6 @@
 # basic.yaml
 scheduler:
-   # job: 'wandb/jobs/Wandb Scheduler Image Job:latest'
-   job: 'griffin_wb/proj/Wandb Scheduler Image Job:latest'
+   job: 'wandb/jobs/Wandb Scheduler Image Job:latest'
    resource: local-container  # required for image jobs
 
    settings:
