@@ -2,7 +2,7 @@
 description: An Optuna scheduler using parameters from a pythonic search space
 
 scheduler:
-  job: 'wandb/jobs/Optuna Scheduler Image Job:latest'
+  job: 'wandb/sweep-jobs/Optuna sweep scheduler job:latest'
   resource: local-container  # required for image-source jobs
   num_workers: 2  # number of concurrent workers
   settings:
@@ -14,7 +14,7 @@ scheduler:
     # optuna_source_filename: pythonic_searchspace_file.py
 
 # Use a training job here, NOT the scheduler job
-job: 'wandb/jobs/Fashion MNIST Train Job:latest'
+job: 'wandb/sweep-jobs/Fashion MNIST Train:latest'
 run_cap: 5
 # metric is required for the Optuna scheduler
 metric:
