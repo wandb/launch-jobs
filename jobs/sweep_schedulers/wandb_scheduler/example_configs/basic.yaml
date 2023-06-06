@@ -1,0 +1,18 @@
+# basic.yaml
+scheduler:
+   job: 'wandb/jobs/Wandb Scheduler Image Job:latest'
+   resource: local-container  # required for image jobs
+
+   settings:
+      method: bayes  # required to specify method here for Wandb scheduler 
+
+job: 'wandb/jobs/Fashion MNIST Train:latest'
+run_cap: 5
+metric:
+  goal: minimize
+  name: loss
+
+parameters:
+   learning_rate:
+      min: 0.001
+      max: 1

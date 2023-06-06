@@ -13,9 +13,17 @@ scheduler:
     # optuna_source: <entity>/<project>/<artifact-name>:<alias>
     # optuna_source_filename: pythonic_searchspace_file.py
 
-job: 'wandb/jobs/Example Train Job:latest'
+# Use a training job here, NOT the scheduler job
+job: 'wandb/jobs/Fashion MNIST Train Job:latest'
 run_cap: 5
-
+# metric is required for the Optuna scheduler
 metric:
-  name: val_acc  # required for optuna pruning logic
-  goal: maximize
+  goal: minimize
+  name: loss
+
+parameters:
+   epochs:
+      values: [10, 25, 100]
+   learning_rate:
+      min: 0.00001
+      max: 1.0
