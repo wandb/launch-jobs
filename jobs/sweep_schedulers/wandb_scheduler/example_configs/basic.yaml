@@ -6,13 +6,13 @@ scheduler:
    settings:
       method: bayes  # required to specify method here for Wandb scheduler 
 
-job: 'wandb/jobs/Hello World 2:latest'
+job: 'wandb/jobs/Fashion MNIST Train:latest'
 run_cap: 5
 metric:
-  goal: maximize
-  name: val_acc
+  goal: minimize
+  name: loss
 
 parameters:
-   param1:
-      min: 0
-      max: 10
+   learning_rate:
+      min: 0.001
+      max: 1
