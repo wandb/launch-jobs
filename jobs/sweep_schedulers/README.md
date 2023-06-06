@@ -21,16 +21,18 @@ scheduler:
    settings:
       method: bayes  # required to specify method here for Wandb scheduler 
 
-job: 'wandb/jobs/Example Train Job:latest'
+job: 'wandb/jobs/Fashion MNIST Train Job:latest'
 run_cap: 5
 metric:
-  goal: maximize
-  name: val_acc
+  goal: minimize
+  name: loss
 
 parameters:
-   param1:
-      min: 0
-      max: 10
+   epochs:
+      values: [10, 25, 100]
+   learning_rate:
+      min: 0.00001
+      max: 1.0
 ```
 
 Or, to run the pre-made Optuna Scheduler job, run: 
