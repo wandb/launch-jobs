@@ -1,1 +1,1 @@
-wandb
+git+https://github.com/wandb/wandb.git@main#egg=wandb
