@@ -35,8 +35,8 @@ def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
     print("Test: X = ", test_X.shape)
 
     # Lets cut this down for the sake of time
-    train_X = train_X[:1000]
-    train_y = train_y[:1000]
+    train_X = train_X[:1200]
+    train_y = train_y[:1200]
 
     # log some images
     for i in range(1, 10):
