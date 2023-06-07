@@ -18,11 +18,11 @@ run_cap: 5
 # metric is required for the Optuna scheduler
 metric:
   goal: minimize
-  name: val_loss
+  name: epoch/val_loss
 
 parameters:
    epochs:
-      values: [10, 25, 100]
+      values: [5, 10, 15]
    learning_rate:
       min: 0.00001
       max: 1.0
