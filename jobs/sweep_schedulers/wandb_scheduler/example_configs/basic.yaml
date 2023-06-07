@@ -1,16 +1,17 @@
 # basic.yaml
 scheduler:
-   job: 'wandb/sweep-jobs/Wandb sweep scheduler job:latest'
+   # job: 'wandb/sweep-jobs/job-wandb-sweep-scheduler:latest'
+   job: 'griffin_wb/proj/job-wandb_job_wandb_sweep_scheduler:latest'
    resource: local-container  # required for image jobs
 
    settings:
       method: bayes  # required to specify method here for Wandb scheduler 
 
-job: 'wandb/sweep-jobs/Fashion MNIST Train:latest'
+job: 'wandb/sweep-jobs/job-fashion-MNIST-train:latest'
 run_cap: 5
 metric:
   goal: minimize
-  name: loss
+  name: val_loss
 
 parameters:
    learning_rate:
