@@ -192,16 +192,18 @@ def _get_image_paths_dir_and_subdir(repo: str):
     for dir in os.listdir(os.path.join(repo, "jobs")):
         if not os.path.isdir(os.path.join(repo, "jobs", dir)):
             continue
-        
+
         # if top level dir has Dockerfile, thats the image dir
         if os.path.exists(os.path.join(repo, "jobs", dir, "Dockerfile")):
             image_paths += [dir]
             continue
-        
+
         # go through subdirs for folders that container Dockerfile
         for subdir in os.listdir(os.path.join(repo, "jobs", dir)):
             if os.path.isdir(os.path.join(repo, "jobs", dir, subdir)):
-                if os.path.exists(os.path.join(repo, "jobs", dir, subdir, "Dockerfile")):
+                if os.path.exists(
+                    os.path.join(repo, "jobs", dir, subdir, "Dockerfile")
+                ):
                     image_paths += [os.path.join(dir, subdir)]
     return image_paths
 
@@ -209,14 +211,14 @@ def _get_image_paths_dir_and_subdir(repo: str):
 if __name__ == "__main__":
     repo = os.path.dirname(os.path.realpath(__file__))
     image_paths = _get_image_paths_dir_and_subdir(repo)
-    
+
     for image in image_paths:
         extra_write_tags = []
-        
+
         if GIT_BRANCH_DIRTY == "master":
             extra_write_tags.append("latest")
 
-        image_formatted = image.replace('/', '_')
+        image_formatted = image.replace("/", "_")
 
         build(
             image=f"wandb/job_{image_formatted}",
