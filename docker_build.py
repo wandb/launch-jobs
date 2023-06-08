@@ -4,7 +4,6 @@ import os
 import subprocess
 import datetime
 from typing import Dict, List, Optional
-from pathlib import Path
 
 
 def exec_read(cmd: str) -> str:
@@ -187,33 +186,44 @@ def build(
     exec_stream(command)
 
 
-def _get_image_paths(repo: str):
-    checked_dirs = set()
-
-    for p in Path(repo).glob("**/Dockerfile"):
-        parent_dir = p.parent
-        if any(parent in checked_dirs for parent in parent_dir.parents):
+def _get_image_paths_dir_and_subdir(repo: str):
+    """Add top level and sub-directory paths that contain dockerfiles"""
+    image_paths = []
+    for dir in os.listdir(os.path.join(repo, "jobs")):
+        if not os.path.isdir(os.path.join(repo, "jobs", dir)):
             continue
 
-        path = Path(*p.parts[:-1])
-        checked_dirs.add(parent_dir)
-        yield path
+        # if top level dir has Dockerfile, thats the image dir
+        if os.path.exists(os.path.join(repo, "jobs", dir, "Dockerfile")):
+            image_paths += [dir]
+            continue
+
+        # go through subdirs for folders that container Dockerfile
+        for subdir in os.listdir(os.path.join(repo, "jobs", dir)):
+            if os.path.isdir(os.path.join(repo, "jobs", dir, subdir)):
+                if os.path.exists(
+                    os.path.join(repo, "jobs", dir, subdir, "Dockerfile")
+                ):
+                    image_paths += [os.path.join(dir, subdir)]
+    return image_paths
 
 
 if __name__ == "__main__":
-    repo = Path(__file__).resolve().parent
-    for path in _get_image_paths(repo):
+    repo = os.path.dirname(os.path.realpath(__file__))
+    image_paths = _get_image_paths_dir_and_subdir(repo)
+
+    for image in image_paths:
         extra_write_tags = []
 
         if GIT_BRANCH_DIRTY == "master":
             extra_write_tags.append("latest")
 
-        image_formatted = "_".join(path.parts[1:])
+        image_formatted = image.replace("/", "_")
 
         build(
             image=f"wandb/job_{image_formatted}",
-            context_path=str(path.resolve()),
-            dockerfile=str(path.resolve() / "Dockerfile"),
+            context_path=os.path.join(repo, "jobs", image),
+            dockerfile=os.path.join(repo, "jobs", image, "Dockerfile"),
             cache_from_image=f"wandb/{image_formatted}",
             extra_write_tags=extra_write_tags,
         )
