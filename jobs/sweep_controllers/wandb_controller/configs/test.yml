@@ -1,0 +1,3 @@
+run_name: Wandb Test
+config:
+  value: 1

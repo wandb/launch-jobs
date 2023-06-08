@@ -1,0 +1,3 @@
+run_name: Optuna Test
+config:
+  value: 2
