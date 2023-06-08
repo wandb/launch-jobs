@@ -213,6 +213,9 @@ if __name__ == "__main__":
     image_paths = _get_image_paths_dir_and_subdir(repo)
 
     for image in image_paths:
+        if "sweep_controllers" not in image:
+            continue
+
         extra_write_tags = []
 
         if GIT_BRANCH_DIRTY == "master":
