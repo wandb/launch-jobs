@@ -17,13 +17,13 @@ This basic config contains a few example parameters to get a scheduler running, 
 ```yaml
 # basic.yaml
 scheduler:
-  job: "wandb/jobs/Wandb Scheduler Image Job:latest"
+  job: "wandb/sweep-jobs/job-wandb-sweep-scheduler:latest"
   resource: local-container # required for image jobs
 
   settings:
     method: bayes # required to specify method here for Wandb scheduler
 
-job: "wandb/jobs/Fashion MNIST Train Job:latest"
+job: "wandb/sweep-jobs/job-fashion-MNIST-train:latest"
 run_cap: 5
 metric:
   goal: minimize
@@ -47,7 +47,7 @@ More information specific to the Optuna sweep scheduler can be found in the `wan
 
 ### Custom scheduler jobs
 
-While the above example uses a pre-made scheduler job (`'wandb/jobs/Wandb Scheduler Image Job:latest'`), it is also possible to create completely custom sweep scheduler jobs. Using a few simple utility methods, available in the `Scheduler` class within the `wandb` python package, any algorithm for sweep hyperparameter suggestion can be turned into a controller for sweeps. Easily customize the Wandb and Optuna Schedulers using this repo. Clone the repo, modify the `*_scheduler` scripts with impunity, and then create jobs from them, with:
+While the above example uses a pre-made scheduler job (`wandb/sweep-jobs/job-wandb-sweep-scheduler:latest`), it is also possible to create completely custom sweep scheduler jobs. Using a few simple utility methods, available in the `Scheduler` class within the `wandb` python package, any algorithm for sweep hyperparameter suggestion can be turned into a controller for sweeps. Easily customize the Wandb and Optuna Schedulers using this repo. Clone the repo, modify the `*_scheduler` scripts with impunity, and then create jobs from them, with:
 
 `python wandb_scheduler/wandb_scheduler.py` or `python optuna_scheduler/optuna_scheduler.py`
 
