@@ -8,55 +8,73 @@ from torch.distributed import destroy_process_group, init_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-from torchvision.datasets import MNIST
+from torch.distributed import barrier
+from torchvision.datasets import FakeData
 
-BACKEND = os.environ.get("PL_TORCH_DISTRIBUTED_BACKEND", "nccl")
 CUDA = torch.cuda.is_available()
+BACKEND = "nccl" if CUDA else "gloo"
+
+
+print("CUDA Available: ", CUDA)
+print("WORLD_SIZE: ", os.environ.get("WORLD_SIZE"))
+print("RANK: ", os.environ.get("RANK"))
+LOCAL_RANK = os.environ.get("LOCAL_RANK")
+print("LOCAL_RANK: ", os.environ.get("LOCAL_RANK"))
+print("MASTER_ADDR: ", os.environ.get("MASTER_ADDR"))
+print("MASTER_PORT: ", os.environ.get("MASTER_PORT"))
+DEVICE = torch.device(f"cuda:{LOCAL_RANK}" if CUDA else "cpu")
+print("DEVICE: ", DEVICE)
 
 DEFAULT_CONFIG = {
-    "epochs": 0,
+    "epochs": 1,
     "batch_size": 32,
     "lr": 1e-3,
 }
 
 
-def get_mnist_dataset():
-    """Return pytorch MNIST dataset."""
-    return MNIST(
-        root="data",
-        train=True,
-        download=True,
-        transform=torchvision.transforms.Compose([torchvision.transforms.ToTensor()]),
-    )
-
-
 def mnist_train():
     """Run training on the mnist dataset."""
     wandb.init(config=DEFAULT_CONFIG)
-    dataset = get_mnist_dataset()
-    model = torch.nn.Linear(28 * 28, 10)
+    transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
+    dataset = FakeData(
+        size=1000, image_size=(3, 64, 64), num_classes=196, transform=transforms
+    )
+    model = torch.nn.Sequential(
+        torch.nn.Linear(12288, 1024),
+        torch.nn.ReLU(),
+        torch.nn.Linear(1024, 196),
+    )
     optimizer = torch.optim.SGD(model.parameters(), lr=wandb.config.lr)
 
     if CUDA:
-        model = model.cuda()
+        print("Moving model to GPU:", DEVICE)
+        model = model.to(DEVICE)
 
     model = DDP(model)
 
-    sampler = DistributedSampler(dataset)
+    sampler = DistributedSampler(
+        dataset,
+        num_replicas=int(os.environ.get("WORLD_SIZE")),
+        rank=int(os.environ.get("RANK")),
+    )
+
+    print("Batch size:", wandb.config.batch_size)
     loader = DataLoader(dataset, batch_size=wandb.config.batch_size, sampler=sampler)
+
+    barrier()
 
     for epoch in range(wandb.config.epochs):
         sampler.set_epoch(epoch)
-        for batch_idx, (data, target) in enumerate(loader):
+        for _, (data, target) in enumerate(loader):
             if CUDA:
-                data = data.cuda(non_blocking=True)
-                target = target.cuda(non_blocking=True)
+                data = data.to(DEVICE)
+                target = target.to(DEVICE)
             optimizer.zero_grad()
             output = model(data.view(data.shape[0], -1))
             loss = F.cross_entropy(output, target)
             loss.backward()
             optimizer.step()
-            print(f"Epoch {epoch} | Batch {batch_idx} | Loss {loss.item()}")
+            wandb.log({"loss": loss.item()})
 
 
 if __name__ == "__main__":
