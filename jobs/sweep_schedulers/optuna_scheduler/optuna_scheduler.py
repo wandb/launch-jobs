@@ -19,7 +19,7 @@ from wandb.apis.public import Api as PublicApi
 from wandb.apis.public import QueuedRun, Run
 from wandb.sdk.artifacts.public_artifact import Artifact
 from wandb.sdk.launch.sweeps import SchedulerError
-from wandb.sdk.launch.sweeps.scheduler import Scheduler, SweepRun
+from wandb.sdk.launch.sweeps.scheduler import Scheduler, SweepRun, RunState
 
 
 logger = logging.getLogger(__name__)
@@ -128,6 +128,9 @@ class OptunaScheduler(Scheduler):
         self._optuna_config = kwargs.get("settings")
         if not self._optuna_config:
             self._optuna_config = self._wandb_run.config.get("settings", {})
+
+        # if metric doesn't appear to be logging, try to infer it
+        self._try_infer_metric = self._optuna_config.get("try_infer_metric", True)
 
     @property
     def study(self) -> optuna.study.Study:
@@ -465,6 +468,40 @@ class OptunaScheduler(Scheduler):
         history = api_run.scan_history(keys=["_step", metric_name])
         metrics = [x[metric_name] for x in history]
 
+        if len(metrics) == 0 and api_run.lastHistoryStep > -1:
+            logger.debug("No metrics, but lastHistoryStep exists")
+            wandb.termwarn(
+                f"{LOG_PREFIX}Detected logged metrics, but none matching " +
+                f"provided metric name: '{metric_name}'"
+            )
+            if self._try_infer_metric:
+                try:
+                    api_run.load(force=True)
+                except Exception as e:
+                    logger.debug(f"Failed to force load run from public api: {str(e)}")
+                    self._try_infer_metric = False
+                    return []
+
+                run_keys = api_run._attrs["historyKeys"]["keys"].keys()
+                potential_keys = [
+                    k
+                    for k in run_keys
+                    for kwrd in ["loss", "acc", "metric", "score"]
+                    if kwrd in k
+                ]
+                if len(potential_keys) > 0:
+                    metric_name = potential_keys[0]
+                    wandb.termwarn(
+                        f"{LOG_PREFIX}Inferring metric name from logged metrics, now" +
+                        f" using metric: '{metric_name}'. To disable this behavior, " +
+                        "set a correct metric.name or set scheduler.settings._try_" +
+                        "infer_metric to false in the sweep config."
+                    )
+                    self._sweep_config["metric"]["name"] = metric_name
+
+                # only try inference once, even if it fails, don't try again
+                self._try_infer_metric = False
+
         return metrics
 
     def _poll_run(self, orun: OptunaRun) -> bool:
@@ -484,14 +521,30 @@ class OptunaScheduler(Scheduler):
 
         orun.num_metrics = len(metrics)
 
-        # run hasn't started
-        if self._runs[orun.sweep_run.id].state.is_alive or len(metrics) == 0:
-            logger.debug(f"Run ({orun.sweep_run.id}) has no metrics")
+        # run still running
+        if self._runs[orun.sweep_run.id].state.is_alive:
             return False
 
         # run is complete
         prev_metrics = orun.trial._cached_frozen_trial.intermediate_values
-        last_value = prev_metrics[orun.num_metrics - 1]
+        last_value = (
+            -1
+            if self.study.direction == optuna.study.StudyDirection.MAXIMIZE
+            else float("inf")
+        )
+        if (
+            self._runs[orun.sweep_run.id].state == RunState.FINISHED
+            and len(prev_metrics) == 0
+        ):
+            # run finished correctly, but never logged a metric
+            wandb.termwarn(
+                f"{LOG_PREFIX}Run ({orun.sweep_run.id}) never logged metric: " +
+                f"'{self._sweep_config['metric']['name']}'. Check your sweep " +
+                "config and training script."
+            )
+        elif len(prev_metrics) > 0:
+            last_value = prev_metrics[orun.num_metrics - 1]
+
         self.study.tell(
             trial=orun.trial,
             state=optuna.trial.TrialState.COMPLETE,
