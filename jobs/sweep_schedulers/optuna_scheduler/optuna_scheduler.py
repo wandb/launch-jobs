@@ -129,8 +129,8 @@ class OptunaScheduler(Scheduler):
         if not self._optuna_config:
             self._optuna_config = self._wandb_run.config.get("settings", {})
 
-        # if metric doesn't appear to be logging, try to infer it
-        self._try_infer_metric = self._optuna_config.get("try_infer_metric", True)
+        # if metric is misconfigured, increment, stop sweep if 3 misconfigured runs
+        self._num_misconfigured_runs = 0
 
     @property
     def study(self) -> optuna.study.Study:
@@ -221,7 +221,7 @@ class OptunaScheduler(Scheduler):
         mod, err = _get_module("optuna", filepath)
         if not mod:
             raise SchedulerError(
-                f"{LOG_PREFIX}Failed to load optuna from path {filepath} "
+                f"Failed to load optuna from path {filepath} "
                 f" with error: {err}"
             )
 
@@ -286,7 +286,7 @@ class OptunaScheduler(Scheduler):
         artifact = self._wandb_run.use_artifact(artifact_name, type="optuna")
         if not artifact:
             raise SchedulerError(
-                f"{LOG_PREFIX}Failed to load artifact: {artifact_name}"
+                f"Failed to load artifact: {artifact_name}"
             )
 
         path = artifact.download()
@@ -419,6 +419,10 @@ class OptunaScheduler(Scheduler):
         return
 
     def _get_next_sweep_run(self, worker_id: int) -> Optional[SweepRun]:
+        if self._num_misconfigured_runs >= 3:
+            raise SchedulerError(
+                f"Too many misconfigured runs ({self._num_misconfigured_runs}), stopping sweep early"
+            )
         config, trial = self._trial_func()
         run: dict = self._api.upsert_run(
             project=self._project,
@@ -474,33 +478,6 @@ class OptunaScheduler(Scheduler):
                 f"{LOG_PREFIX}Detected logged metrics, but none matching " +
                 f"provided metric name: '{metric_name}'"
             )
-            if self._try_infer_metric:
-                try:
-                    api_run.load(force=True)
-                except Exception as e:
-                    logger.debug(f"Failed to force load run from public api: {str(e)}")
-                    self._try_infer_metric = False
-                    return []
-
-                run_keys = api_run._attrs["historyKeys"]["keys"].keys()
-                potential_keys = [
-                    k
-                    for k in run_keys
-                    for kwrd in ["loss", "acc", "metric", "score"]
-                    if kwrd in k
-                ]
-                if len(potential_keys) > 0:
-                    metric_name = potential_keys[0]
-                    wandb.termwarn(
-                        f"{LOG_PREFIX}Inferring metric name from logged metrics, now" +
-                        f" using metric: '{metric_name}'. To disable this behavior, " +
-                        "set a correct metric.name or set scheduler.settings._try_" +
-                        "infer_metric to false in the sweep config."
-                    )
-                    self._sweep_config["metric"]["name"] = metric_name
-
-                # only try inference once, even if it fails, don't try again
-                self._try_infer_metric = False
 
         return metrics
 
@@ -542,6 +519,7 @@ class OptunaScheduler(Scheduler):
                 f"'{self._sweep_config['metric']['name']}'. Check your sweep " +
                 "config and training script."
             )
+            self._num_misconfigured_runs += 1
         elif len(prev_metrics) > 0:
             last_value = prev_metrics[orun.num_metrics - 1]
 
@@ -592,7 +570,7 @@ class OptunaScheduler(Scheduler):
             elif type(extras.get("min")) == float:
                 if not extras.get("max"):
                     raise SchedulerError(
-                        f"{LOG_PREFIX}Error converting config. 'min' requires 'max'"
+                        "Error converting config. 'min' requires 'max'"
                     )
                 log = "log" in param
                 config[param]["value"] = trial.suggest_float(
@@ -601,7 +579,7 @@ class OptunaScheduler(Scheduler):
             elif type(extras.get("min")) == int:
                 if not extras.get("max"):
                     raise SchedulerError(
-                        f"{LOG_PREFIX}Error converting config. 'min' requires 'max'"
+                        "Error converting config. 'min' requires 'max'"
                     )
                 log = "log" in param
                 config[param]["value"] = trial.suggest_int(
