@@ -6,18 +6,22 @@ from typing import Any, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import wandb
+
 # To load the mnist data
 from keras.datasets import fashion_mnist
+from keras.models import load_model
+
 # importing various types of hidden layers
 from tensorflow.keras.layers import Conv2D, Dense, Flatten, MaxPooling2D
 from tensorflow.keras.models import Sequential
+
 # Adam legacy for m1/m2 macs
 from tensorflow.keras.optimizers.legacy import Adam
-from wandb.keras import WandbMetricsLogger
+from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
 
 def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
-    run = wandb.init(project=project, entity=entity)
+    run = wandb.init(project=project, entity=entity, resume=True)
 
     # get config, could be set from sweep scheduler
     train_config = run.config
@@ -51,13 +55,17 @@ def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
     train_X = np.expand_dims(train_X, -1).astype(np.float32)
     test_X = np.expand_dims(test_X, -1)
 
-    # load model
-    model = model_arch()
-    model.compile(
-        optimizer=Adam(learning_rate=learning_rate),
-        loss="sparse_categorical_crossentropy",
-        metrics=["sparse_categorical_accuracy"],
-    )
+    # load model from checkpoint or create new model
+    ckpt = get_checkpoint()
+    if ckpt:
+        model = ckpt
+    else:
+        model = model_arch()
+        model.compile(
+            optimizer=Adam(learning_rate=learning_rate),
+            loss="sparse_categorical_crossentropy",
+            metrics=["sparse_categorical_accuracy"],
+        )
     model.summary()
 
     model.fit(
@@ -66,9 +74,7 @@ def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
         epochs=epochs,
         steps_per_epoch=steps_per_epoch,
         validation_split=0.33,
-        callbacks=[
-            WandbMetricsLogger(),
-        ],
+        callbacks=[WandbMetricsLogger(), WandbModelCheckpoint(filepath="model.h5")],
     )
 
     # do some manual testing
@@ -133,6 +139,19 @@ def model_arch():
     # function
     models.add(Dense(10, activation="softmax"))
     return models
+
+
+def get_checkpoint():
+    assert wandb.run
+    api = wandb.Api()
+    run = api.run(wandb.run.path)
+    for artifact in run.logged_artifacts():
+        if artifact.type == "model":
+            name = artifact.source_qualified_name
+            name = name.split(":")[0] + ":latest"
+            artifact = api.artifact(name)
+            path = artifact.download(root=".")
+            return load_model(path + "/model.h5")
 
 
 def main():
