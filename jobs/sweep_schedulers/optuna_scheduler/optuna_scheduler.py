@@ -130,7 +130,7 @@ class OptunaScheduler(Scheduler):
         if not self._optuna_config:
             self._optuna_config = self._wandb_run.config.get("settings", {})
 
-        # if metric is misconfigured, increment, stop sweep if 3 misconfigured runs
+        # if metric is misconfigured, increment, stop sweep if 3 consecutive fails
         self._num_misconfigured_runs = 0
 
     @property
@@ -523,6 +523,7 @@ class OptunaScheduler(Scheduler):
             self._num_misconfigured_runs += 1
         elif len(prev_metrics) > 0:
             last_value = prev_metrics[orun.num_metrics - 1]
+            self._num_misconfigured_runs = 0  # only count consecutive
 
         self.study.tell(
             trial=orun.trial,
