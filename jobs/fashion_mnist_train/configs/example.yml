@@ -1,0 +1,5 @@
+run_name: Fashion MNIST Train Job
+config:
+  epochs: 20
+  learning_rate: 0.001
+  steps_per_epoch: 100

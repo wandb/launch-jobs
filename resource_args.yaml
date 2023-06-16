@@ -1,0 +1,8 @@
+# This file should look like the launch-agent config.
+# Generally it's used to point to any creds or env vars jobs will require
+local-container:
+  net: host
+  env-file: "/Users/andrewtruong/.wandb_launch/env.list"
+  volume:
+    - "/Users/andrewtruong/.aws:/home/andrewtruong/.aws:ro"
+    - "/Users/andrewtruong/.aws:/root/.aws:ro"

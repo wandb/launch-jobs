@@ -1,0 +1,29 @@
+# optuna_artifact.yaml
+description: An Optuna scheduler using parameters from a pythonic search space
+
+scheduler:
+  job: 'wandb/sweep-jobs/job-optuna-sweep-scheduler:latest'
+  resource: local-container  # required for image-source jobs
+  num_workers: 2  # number of concurrent workers
+  settings:
+    # Using the local file optuna_wandb.py as a pythonic search space,
+    # sweep hyperparameters are creating here
+    optuna_source: optuna_wandb.py
+    # This file can also be loaded from an artifact, like: 
+    # optuna_source: <entity>/<project>/<artifact-name>:<alias>
+    # optuna_source_filename: pythonic_searchspace_file.py
+
+# Use a training job here, NOT the scheduler job
+job: 'wandb/sweep-jobs/job-fashion-MNIST-train:latest'
+run_cap: 5
+# metric is required for the Optuna scheduler
+metric:
+  goal: minimize
+  name: val_loss
+
+parameters:
+   epochs:
+      values: [10, 25, 100]
+   learning_rate:
+      min: 0.00001
+      max: 1.0

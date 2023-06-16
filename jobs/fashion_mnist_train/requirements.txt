@@ -1,0 +1,4 @@
+wandb
+keras
+tensorflow
+matplotlib
