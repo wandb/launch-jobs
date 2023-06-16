@@ -37,10 +37,10 @@ def mnist_train():
     wandb.init(config=DEFAULT_CONFIG)
     transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
     dataset = FakeData(
-        size=10000, image_size=(3, 256, 256), num_classes=196, transform=transforms
+        size=1000, image_size=(3, 128, 128), num_classes=196, transform=transforms
     )
     model = torch.nn.Sequential(
-        torch.nn.Linear(196608, 4096),
+        torch.nn.Linear(49152, 4096),
         torch.nn.ReLU(),
         torch.nn.Linear(4096, 1024),
         torch.nn.ReLU(),
