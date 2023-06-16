@@ -110,6 +110,7 @@ def _handle_job_logic(run, name, enable_git=False) -> None:
 
 class OptunaScheduler(Scheduler):
     OPT_TIMEOUT = 2
+    MAX_MISCONFIGURED_RUNS = 3
 
     def __init__(
         self,
@@ -419,7 +420,7 @@ class OptunaScheduler(Scheduler):
         return
 
     def _get_next_sweep_run(self, worker_id: int) -> Optional[SweepRun]:
-        if self._num_misconfigured_runs >= 3:
+        if self._num_misconfigured_runs >= self.MAX_MISCONFIGURED_RUNS:
             raise SchedulerError(
                 f"Too many misconfigured runs ({self._num_misconfigured_runs}), stopping sweep early"
             )
