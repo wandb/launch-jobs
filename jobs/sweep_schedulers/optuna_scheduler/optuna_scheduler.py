@@ -420,10 +420,6 @@ class OptunaScheduler(Scheduler):
         return
 
     def _get_next_sweep_run(self, worker_id: int) -> Optional[SweepRun]:
-        if self._num_misconfigured_runs >= self.MAX_MISCONFIGURED_RUNS:
-            raise SchedulerError(
-                f"Too many misconfigured runs ({self._num_misconfigured_runs}), stopping sweep early"
-            )
         config, trial = self._trial_func()
         run: dict = self._api.upsert_run(
             project=self._project,
@@ -505,11 +501,6 @@ class OptunaScheduler(Scheduler):
 
         # run is complete
         prev_metrics = orun.trial._cached_frozen_trial.intermediate_values
-        last_value = (
-            -1
-            if self.study.direction == optuna.study.StudyDirection.MAXIMIZE
-            else float("inf")
-        )
         if (
             self._runs[orun.sweep_run.id].state == RunState.FINISHED
             and len(prev_metrics) == 0
@@ -521,9 +512,20 @@ class OptunaScheduler(Scheduler):
                 "config and training script."
             )
             self._num_misconfigured_runs += 1
-        elif len(prev_metrics) > 0:
-            last_value = prev_metrics[orun.num_metrics - 1]
-            self._num_misconfigured_runs = 0  # only count consecutive
+            self.study.tell(orun.trial, state=optuna.trial.TrialState.FAIL)
+
+            if self._num_misconfigured_runs >= self.MAX_MISCONFIGURED_RUNS:
+                raise SchedulerError(
+                    f"Too many misconfigured runs ({self._num_misconfigured_runs}), stopping sweep early"
+                )
+
+            # Delete run in Scheduler memory, freeing up worker
+            del self._runs[orun.sweep_run.id]
+
+            return True
+
+        last_value = prev_metrics[orun.num_metrics - 1]
+        self._num_misconfigured_runs = 0  # only count consecutive
 
         self.study.tell(
             trial=orun.trial,
