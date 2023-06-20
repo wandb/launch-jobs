@@ -7,7 +7,9 @@ RUN apt update && apt install gcc -y
 
 WORKDIR /launch
 
-COPY --link optuna_scheduler.py optuna_wandb.py requirements.txt ./
+COPY --link requirements.txt ./
 RUN pip install -r requirements.txt
+
+COPY --link optuna_scheduler.py optuna_wandb.py ./
 
 ENTRYPOINT [ "python", "optuna_scheduler.py" ]
