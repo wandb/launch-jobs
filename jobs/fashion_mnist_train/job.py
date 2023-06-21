@@ -20,16 +20,20 @@ from tensorflow.keras.optimizers.legacy import Adam
 from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
 
-def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
-    run = wandb.init(project=project, entity=entity, resume=True)
-
-    # get config, could be set from sweep scheduler
-    train_config = run.config
-
-    # get training parameters from config
-    epochs = train_config.get("epochs", 10)
-    learning_rate = train_config.get("learning_rate", 0.001)
-    steps_per_epoch = train_config.get("steps_per_epoch", 100)
+def train(
+        project: Optional[str],
+        entity: Optional[str],
+        epochs: Optional[int],
+        learning_rate: Optional[float],
+        steps_per_epoch: Optional[int],
+        **kwargs: Any
+):
+    config = {
+        "epochs": epochs,
+        "learning_rate": learning_rate,
+        "steps_per_epoch": steps_per_epoch,
+    }
+    wandb.init(project=project, entity=entity, config=config, resume=True)
 
     # load data
     (train_X, train_y), (test_X, test_y) = fashion_mnist.load_data()
@@ -158,6 +162,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--entity", "-e", type=str, default=None)
     parser.add_argument("--project", "-p", type=str, default=None)
+    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--learning_rate", type=float, default=0.001)
+    parser.add_argument("--steps_per_epoch", type=int, default=100)
     args = parser.parse_args()
     train(**vars(args))
 
