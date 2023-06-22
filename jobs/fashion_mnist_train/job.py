@@ -33,7 +33,15 @@ def train(
         "learning_rate": learning_rate,
         "steps_per_epoch": steps_per_epoch,
     }
-    wandb.init(project=project, entity=entity, config=config, resume=True)
+    run = wandb.init(project=project, entity=entity, config=config, resume=True)
+
+    # get config, could be set from sweep scheduler
+    train_config = run.config
+
+    # get training parameters from config
+    epochs = train_config.get("epochs", 10)
+    learning_rate = train_config.get("learning_rate", 0.001)
+    steps_per_epoch = train_config.get("steps_per_epoch", 100)
 
     # load data
     (train_X, train_y), (test_X, test_y) = fashion_mnist.load_data()
