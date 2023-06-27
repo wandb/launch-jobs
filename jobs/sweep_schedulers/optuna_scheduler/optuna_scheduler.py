@@ -12,6 +12,7 @@ from types import ModuleType
 from typing import Any, Dict, List, Optional, Tuple
 
 import click
+import joblib
 import optuna
 import wandb
 from wandb.apis.internal import Api
@@ -97,18 +98,20 @@ def _handle_job_logic(run, name, enable_git=False) -> None:
         )
         tag = os.environ.get("WANDB_DOCKER", "").split(":")
         if len(tag) == 2:
-            jobstr += f"-{tag[0].replace('/', '_')}_{tag[-1]}:latest"
-        else:
+            jobstr += f"-{tag[0].replace('/', '_')}:{tag[-1]}"
+        elif len(tag) == 1:
+            jobstr += f"-{tag[0].replace('/', '_')}:latest"
+        else:  # unknown format
             jobstr = f"found here: https://wandb.ai/{jobstr}s/"
         wandb.termlog(f"Creating image job {click.style(jobstr, fg='yellow')}\n")
     elif not enable_git:
         jobstr += f"-{name}:latest"
         wandb.termlog(
-            f"Creating code-artifact job: {click.style(jobstr, fg='yellow')}\n"
+            f"Creating artifact job: {click.style(jobstr, fg='yellow')}\n"
         )
     else:
         _s = click.style(f"https://wandb.ai/{jobstr}s/", fg="yellow")
-        wandb.termlog(f"Creating repo-artifact job found here: {_s}\n")
+        wandb.termlog(f"Creating repo job found here: {_s}\n")
         run.log_code(name=name, exclude_fn=lambda x: x.startswith("_"))
     return
 
@@ -227,7 +230,7 @@ class OptunaScheduler(Scheduler):
         """Helper to configure dict of at least one metric.
 
         Dict contains the metric names as keys, with the optimization
-        direction (or goal) as the value
+        direction (or goal) as the value (type: optuna.study.StudyDirection)
         """
         # if single-objective, just top level metric is set
         if self._sweep_config.get("metric"):
@@ -484,17 +487,19 @@ class OptunaScheduler(Scheduler):
     def _save_state(self) -> None:
         """Called when Scheduler class invokes exit().
 
-        Save optuna study sqlite data to an artifact in the controller run
+        Save optuna study, or sqlite data to an artifact in the scheduler run
         """
-        artifact = wandb.Artifact(
-            f"{OptunaComponents.storage.name}-{self._sweep_id}", type="optuna"
-        )
-        if not self._storage_path:
-            wandb.termwarn(
-                f"{LOG_PREFIX}No db storage path found, saving to default path"
-            )
-            self._storage_path = OptunaComponents.storage.value
+        if not self._study:  # nothing to save
+            return None
 
+        artifact_name = f"{OptunaComponents.storage.name}-{self._sweep_id}"
+        if not self._storage_path:
+            wandb.termwarn(f"{LOG_PREFIX}No db storage path found, saving full model")
+            artifact_name = f"optuna-study-{self._sweep_id}"
+            joblib.dump(self.study, f"study-{self._sweep_id}.pkl")
+            self._storage_path = f"study-{self._sweep_id}.pkl"
+
+        artifact = wandb.Artifact(artifact_name, type="optuna")
         artifact.add_file(self._storage_path)
         self._wandb_run.log_artifact(artifact)
 
@@ -505,6 +510,7 @@ class OptunaScheduler(Scheduler):
         return
 
     def _get_next_sweep_run(self, worker_id: int) -> Optional[SweepRun]:
+        """Called repeatedly in the polling loop, whenever a worker is available."""
         config, trial = self._trial_func()
         run: dict = self._api.upsert_run(
             project=self._project,
