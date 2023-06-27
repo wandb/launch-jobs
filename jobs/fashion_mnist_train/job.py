@@ -87,6 +87,7 @@ def train(
         steps_per_epoch=steps_per_epoch,
         validation_split=0.33,
         callbacks=[WandbMetricsLogger(), WandbModelCheckpoint(filepath="model.h5")],
+        initial_epoch=wandb.run.step,
     )
 
     # do some manual testing
