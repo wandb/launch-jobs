@@ -19,7 +19,7 @@ from wandb.apis.public import Api as PublicApi
 from wandb.apis.public import QueuedRun, Run
 from wandb.sdk.artifacts.public_artifact import Artifact
 from wandb.sdk.launch.sweeps import SchedulerError
-from wandb.sdk.launch.sweeps.scheduler import Scheduler, SweepRun
+from wandb.sdk.launch.sweeps.scheduler import Scheduler, SweepRun, RunState
 
 
 logger = logging.getLogger(__name__)
@@ -110,6 +110,7 @@ def _handle_job_logic(run, name, enable_git=False) -> None:
 
 class OptunaScheduler(Scheduler):
     OPT_TIMEOUT = 2
+    MAX_MISCONFIGURED_RUNS = 3
 
     def __init__(
         self,
@@ -128,6 +129,9 @@ class OptunaScheduler(Scheduler):
         self._optuna_config = kwargs.get("settings")
         if not self._optuna_config:
             self._optuna_config = self._wandb_run.config.get("settings", {})
+
+        # if metric is misconfigured, increment, stop sweep if 3 consecutive fails
+        self._num_misconfigured_runs = 0
 
     @property
     def study(self) -> optuna.study.Study:
@@ -218,7 +222,7 @@ class OptunaScheduler(Scheduler):
         mod, err = _get_module("optuna", filepath)
         if not mod:
             raise SchedulerError(
-                f"{LOG_PREFIX}Failed to load optuna from path {filepath} "
+                f"Failed to load optuna from path {filepath} "
                 f" with error: {err}"
             )
 
@@ -283,7 +287,7 @@ class OptunaScheduler(Scheduler):
         artifact = self._wandb_run.use_artifact(artifact_name, type="optuna")
         if not artifact:
             raise SchedulerError(
-                f"{LOG_PREFIX}Failed to load artifact: {artifact_name}"
+                f"Failed to load artifact: {artifact_name}"
             )
 
         path = artifact.download()
@@ -465,6 +469,13 @@ class OptunaScheduler(Scheduler):
         history = api_run.scan_history(keys=["_step", metric_name])
         metrics = [x[metric_name] for x in history]
 
+        if len(metrics) == 0 and api_run.lastHistoryStep > -1:
+            logger.debug("No metrics, but lastHistoryStep exists")
+            wandb.termwarn(
+                f"{LOG_PREFIX}Detected logged metrics, but none matching " +
+                f"provided metric name: '{metric_name}'"
+            )
+
         return metrics
 
     def _poll_run(self, orun: OptunaRun) -> bool:
@@ -484,14 +495,38 @@ class OptunaScheduler(Scheduler):
 
         orun.num_metrics = len(metrics)
 
-        # run hasn't started
-        if self._runs[orun.sweep_run.id].state.is_alive or len(metrics) == 0:
-            logger.debug(f"Run ({orun.sweep_run.id}) has no metrics")
+        # run still running
+        if self._runs[orun.sweep_run.id].state.is_alive:
             return False
 
         # run is complete
         prev_metrics = orun.trial._cached_frozen_trial.intermediate_values
+        if (
+            self._runs[orun.sweep_run.id].state == RunState.FINISHED
+            and len(prev_metrics) == 0
+        ):
+            # run finished correctly, but never logged a metric
+            wandb.termwarn(
+                f"{LOG_PREFIX}Run ({orun.sweep_run.id}) never logged metric: " +
+                f"'{self._sweep_config['metric']['name']}'. Check your sweep " +
+                "config and training script."
+            )
+            self._num_misconfigured_runs += 1
+            self.study.tell(orun.trial, state=optuna.trial.TrialState.FAIL)
+
+            if self._num_misconfigured_runs >= self.MAX_MISCONFIGURED_RUNS:
+                raise SchedulerError(
+                    f"Too many misconfigured runs ({self._num_misconfigured_runs}), stopping sweep early"
+                )
+
+            # Delete run in Scheduler memory, freeing up worker
+            del self._runs[orun.sweep_run.id]
+
+            return True
+
         last_value = prev_metrics[orun.num_metrics - 1]
+        self._num_misconfigured_runs = 0  # only count consecutive
+
         self.study.tell(
             trial=orun.trial,
             state=optuna.trial.TrialState.COMPLETE,
@@ -539,7 +574,7 @@ class OptunaScheduler(Scheduler):
             elif type(extras.get("min")) == float:
                 if not extras.get("max"):
                     raise SchedulerError(
-                        f"{LOG_PREFIX}Error converting config. 'min' requires 'max'"
+                        "Error converting config. 'min' requires 'max'"
                     )
                 log = "log" in param
                 config[param]["value"] = trial.suggest_float(
@@ -548,7 +583,7 @@ class OptunaScheduler(Scheduler):
             elif type(extras.get("min")) == int:
                 if not extras.get("max"):
                     raise SchedulerError(
-                        f"{LOG_PREFIX}Error converting config. 'min' requires 'max'"
+                        "Error converting config. 'min' requires 'max'"
                     )
                 log = "log" in param
                 config[param]["value"] = trial.suggest_int(
