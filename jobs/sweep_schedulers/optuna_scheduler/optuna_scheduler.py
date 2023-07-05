@@ -111,7 +111,7 @@ def _handle_job_logic(run, name, enable_git=False) -> None:
         )
     else:
         _s = click.style(f"https://wandb.ai/{jobstr}s/", fg="yellow")
-        wandb.termlog(f"Creating repo job found here: {_s}\n")
+        wandb.termlog(f"Creating git repo job found here: {_s}\n")
         run.log_code(name=name, exclude_fn=lambda x: x.startswith("_"))
     return
 
