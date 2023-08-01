@@ -534,7 +534,10 @@ class OptunaScheduler(Scheduler):
         history = api_run.scan_history(keys=names + ["_step"])
         metrics = []
         for log in history:
-            metrics += [tuple(log.get(key) for key in names)]
+            if self.is_multi_objective:
+                metrics += [tuple(log.get(key) for key in names)]
+            else:
+                metrics += [log.get(names[0])]
 
         if len(metrics) == 0 and api_run.lastHistoryStep > -1:
             logger.debug("No metrics, but lastHistoryStep exists")
