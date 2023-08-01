@@ -12,7 +12,6 @@ from types import ModuleType
 from typing import Any, Dict, List, Optional, Tuple
 
 import click
-import joblib
 import optuna
 import wandb
 from wandb.apis.internal import Api
@@ -463,16 +462,10 @@ class OptunaScheduler(Scheduler):
 
         Save optuna study, or sqlite data to an artifact in the scheduler run
         """
-        if not self._study:  # nothing to save
+        if not self._study or self._storage_path:  # nothing to save
             return None
 
         artifact_name = f"{OptunaComponents.storage.name}-{self._sweep_id}"
-        if not self._storage_path:
-            wandb.termwarn(f"{LOG_PREFIX}No db storage path found, saving full model")
-            artifact_name = f"optuna-study-{self._sweep_id}"
-            joblib.dump(self.study, f"study-{self._sweep_id}.pkl")
-            self._storage_path = f"study-{self._sweep_id}.pkl"
-
         artifact = wandb.Artifact(artifact_name, type="optuna")
         artifact.add_file(self._storage_path)
         self._wandb_run.log_artifact(artifact)
