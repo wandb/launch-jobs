@@ -18,7 +18,7 @@ import wandb
 from wandb.apis.internal import Api
 from wandb.apis.public import Api as PublicApi
 from wandb.apis.public import QueuedRun, Run
-from wandb.sdk.artifacts.public_artifact import Artifact
+from wandb.sdk.artifacts.artifact import Artifact
 from wandb.sdk.launch.sweeps import SchedulerError
 from wandb.sdk.launch.sweeps.scheduler import RunState, Scheduler, SweepRun
 
@@ -62,20 +62,24 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
     parser.add_argument("--project", type=str, default=kwargs.get("project"))
     parser.add_argument("--entity", type=str, default=kwargs.get("entity"))
     parser.add_argument("--num_workers", type=int, default=1)
-    parser.add_argument("--name", type=str, default=None)
+    parser.add_argument("--name", type=str, default=f"job-{scheduler.__name__}")
     parser.add_argument("--enable_git", action="store_true", default=False)
     cli_args = parser.parse_args()
 
-    name = cli_args.name or scheduler.__name__
+    settings = {"job_name": cli_args.name}
+    if cli_args.enable_git:
+        settings.update({"disable_git": True})
+
     run = wandb.init(
-        settings={"disable_git": True} if not cli_args.enable_git else {},
+        settings=settings,
         project=cli_args.project,
         entity=cli_args.entity,
     )
     config = run.config
 
     if not config.get("sweep_args", {}).get("sweep_id"):
-        _handle_job_logic(run, name, cli_args.enable_git)
+        # not a sweep, just finish the run and return
+        run.finish()
         return
 
     args = config.get("sweep_args", {})
@@ -84,36 +88,6 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
 
     _scheduler = scheduler(Api(), run=run, **args, **kwargs)
     _scheduler.start()
-
-
-def _handle_job_logic(run, name, enable_git=False) -> None:
-    wandb.termlog(
-        "\nJob not configured to run a sweep, logging code and returning early."
-    )
-    jobstr = f"{run.entity}/{run.project}/job"
-
-    if os.environ.get("WANDB_DOCKER"):
-        wandb.termlog(
-            "Identified 'WANDB_DOCKER' environment var, creating image job..."
-        )
-        tag = os.environ.get("WANDB_DOCKER", "").split(":")
-        if len(tag) == 2:
-            jobstr += f"-{tag[0].replace('/', '_')}:{tag[-1]}"
-        elif len(tag) == 1:
-            jobstr += f"-{tag[0].replace('/', '_')}:latest"
-        else:  # unknown format
-            jobstr = f"found here: https://wandb.ai/{jobstr}s/"
-        wandb.termlog(f"Creating image job {click.style(jobstr, fg='yellow')}\n")
-    elif not enable_git:
-        jobstr += f"-{name}:latest"
-        wandb.termlog(
-            f"Creating artifact job: {click.style(jobstr, fg='yellow')}\n"
-        )
-    else:
-        _s = click.style(f"https://wandb.ai/{jobstr}s/", fg="yellow")
-        wandb.termlog(f"Creating git repo job found here: {_s}\n")
-        run.log_code(name=name, exclude_fn=lambda x: x.startswith("_"))
-    return
 
 
 class OptunaScheduler(Scheduler):
