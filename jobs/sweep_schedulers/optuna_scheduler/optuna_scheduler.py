@@ -62,26 +62,26 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
     parser.add_argument("--entity", type=str, default=kwargs.get("entity"))
     parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--name", type=str, default=f"job-{scheduler.__name__}")
-    parser.add_argument("--enable_git", action="store_true", default=False)
     cli_args = parser.parse_args()
 
     settings = {"job_name": cli_args.name}
-    if cli_args.enable_git:
-        settings.update({"disable_git": True})
-
     run = wandb.init(
         settings=settings,
         project=cli_args.project,
         entity=cli_args.entity,
     )
     config = run.config
+    args = config.get("sweep_args", {})
 
-    if not config.get("sweep_args", {}).get("sweep_id"):
-        # not a sweep, just finish the run and return
+    if not args or not args.get("sweep_id"):
+        # when the config has no sweep args, this is being run directly from CLI
+        # and not in a sweep. Just log the code and return
+        if not os.getenv("WANDB_DOCKER"):
+            # if not docker, log the code to a git or code artifact
+            run.log_code(root=os.path.dirname(__file__))
         run.finish()
         return
 
-    args = config.get("sweep_args", {})
     if cli_args.num_workers:  # override
         kwargs.update({"num_workers": cli_args.num_workers})
 
@@ -161,6 +161,9 @@ class OptunaScheduler(Scheduler):
 
         trial_strs = []
         for trial in self.study.trials:
+            if not trial.values:
+                continue
+
             run_id = trial.user_attrs["run_id"]
             best: str = ""
             if not self.is_multi_objective:
@@ -175,14 +178,12 @@ class OptunaScheduler(Scheduler):
                     f"{trial.state.name}, num-metrics: {len(vals)}, best: {best}"
                 ]
             else:  # multi-objective optimization, only 1 metric logged in study
-                if not trial.values:
-                    continue
-
                 if len(trial.values) != len(self._metric_defs):
                     wandb.termwarn(
-                        f"{LOG_PREFIX}Number of trial metrics ({trial.values})"
+                        f"{LOG_PREFIX}Number of logged metrics ({trial.values})"
                         " does not match number of metrics defined "
-                        f"({self._metric_defs})"
+                        f"({self._metric_defs}). Specify metrics for optimization"
+                        " in the scheduler.settings.metrics portion of the sweep config"
                     )
                     continue
 
@@ -191,10 +192,11 @@ class OptunaScheduler(Scheduler):
                     best += f"{metric.name} ({direction}):"
                     best += f"{round(val, 5)}, "
 
+                # trim trailing comma and space
                 best = best[:-2]
                 trial_strs += [
                     f"\t[trial-{trial.number + 1}] run: {run_id}, state: "
-                    f"{trial.state.name}, best: {best or 'None'}"
+                    f"{trial.state.name}, best: {best}"
                 ]
 
         return "\n".join(trial_strs[-10:])  # only print out last 10
@@ -233,7 +235,10 @@ class OptunaScheduler(Scheduler):
             metric_defs += [Metric(name=metric["name"], direction=direction)]
 
         if len(metric_defs) == 0:
-            raise SchedulerError("Optuna sweep missing metric")
+            raise SchedulerError(
+                "Zero metrics found in the top level 'metric' section "
+                "and multi-objective metric section scheduler.settings.metrics"
+            )
 
         return metric_defs
 
@@ -276,7 +281,7 @@ class OptunaScheduler(Scheduler):
         mod, err = _get_module("optuna", filepath)
         if not mod:
             raise SchedulerError(
-                f"Failed to load optuna from path {filepath} " f" with error: {err}"
+                f"Failed to load optuna from path {filepath} with error: {err}"
             )
 
         # Set custom optuna trial creation method
