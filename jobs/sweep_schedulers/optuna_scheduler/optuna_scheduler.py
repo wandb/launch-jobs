@@ -654,7 +654,7 @@ class OptunaScheduler(Scheduler):
                 raise SchedulerError(
                     "Distributions are deprecated. Please provide 'step' or 'log' with 'min' and 'max'."
                 )
-            elif type(extras.get("min")) == float:
+            elif isinstance(extras.get("min"), float):
                 if not extras.get("max"):
                     raise SchedulerError(
                         "Error converting config. 'min' requires 'max'"
@@ -664,7 +664,7 @@ class OptunaScheduler(Scheduler):
                 config[param]["value"] = trial.suggest_float(
                     param, extras["min"], extras["max"], log=log, step=step
                 )
-            elif type(extras.get("min")) == int:
+            elif isinstance(extras.get("min"), int):
                 if not extras.get("max"):
                     raise SchedulerError(
                         "Error converting config. 'min' requires 'max'"
