@@ -25,7 +25,7 @@ def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
     # get training parameters from config
     epochs = train_config.get("epochs", 10)
     learning_rate = train_config.get("learning_rate", 0.001)
-    steps_per_epoch = train_config.get("steps_per_epoch", 100)
+    steps_per_epoch = train_config.get("steps_per_epoch", 10)
 
     # load data
     (train_X, train_y), (test_X, test_y) = fashion_mnist.load_data()
