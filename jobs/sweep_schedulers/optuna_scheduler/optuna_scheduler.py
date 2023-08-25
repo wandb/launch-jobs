@@ -60,7 +60,7 @@ def setup_scheduler(scheduler: Scheduler, **kwargs):
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", type=str, default=kwargs.get("project"))
     parser.add_argument("--entity", type=str, default=kwargs.get("entity"))
-    parser.add_argument("--num_workers", type=int, default=1)
+    parser.add_argument("--num_workers", type=int, default=None)
     parser.add_argument("--name", type=str, default=f"job-{scheduler.__name__}")
     cli_args = parser.parse_args()
 
