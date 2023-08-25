@@ -600,6 +600,13 @@ class OptunaScheduler(Scheduler):
             return True
 
         if self.is_multi_objective:
+            if len(metrics) == 0:
+                wandb.termerror(
+                    f"{LOG_PREFIX}Run ({orun.sweep_run.id}) never logged metrics: "
+                    + f"'{self._metric_defs}'. Check your sweep "
+                    + "config and training script."
+                )
+                last_value = tuple([float("inf") if m.direction == optuna.study.StudyDirection.MINIMIZE else float("-inf") for m in self._metric_defs])
             last_value = tuple(metrics[-1])
         else:
             last_value = prev_metrics[orun.num_metrics - 1]
