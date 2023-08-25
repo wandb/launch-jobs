@@ -650,10 +650,6 @@ class OptunaScheduler(Scheduler):
                 config[param]["value"] = trial.suggest_categorical(
                     param, [extras["value"]]
                 )
-            elif extras.get("distribution"):
-                raise SchedulerError(
-                    "Distributions are deprecated. Please provide 'step' or 'log' with 'min' and 'max'."
-                )
             elif isinstance(extras.get("min"), float):
                 if not extras.get("max"):
                     raise SchedulerError(
