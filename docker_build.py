@@ -220,10 +220,15 @@ if __name__ == "__main__":
 
         image_formatted = image.replace("/", "_")
 
+        platforms = ["linux/amd64", "linux/arm64"]
+        if image == "distributed_test":  # hack for amd-only distributed job
+            platforms = ["linux/amd64"]
+
         build(
             image=f"wandb/job_{image_formatted}",
             context_path=os.path.join(repo, "jobs", image),
             dockerfile=os.path.join(repo, "jobs", image, "Dockerfile"),
             cache_from_image=f"wandb/{image_formatted}",
             extra_write_tags=extra_write_tags,
+            platforms=platforms
         )
