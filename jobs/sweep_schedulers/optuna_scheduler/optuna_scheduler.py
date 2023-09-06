@@ -19,7 +19,7 @@ from wandb.apis.public import Api as PublicApi
 from wandb.apis.public import QueuedRun, Run
 from wandb.sdk.artifacts.artifact import Artifact
 from wandb.sdk.launch.sweeps import SchedulerError
-from wandb.sdk.launch.sweeps.scheduler import RunState, Scheduler, SweepRun
+from wandb.sdk.launch.sweeps.scheduler import Scheduler, SweepRun
 
 logger = logging.getLogger(__name__)
 optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -574,11 +574,8 @@ class OptunaScheduler(Scheduler):
 
         # run is complete
         prev_metrics = orun.trial._cached_frozen_trial.intermediate_values
-        if (
-            self._runs[orun.sweep_run.id].state == RunState.FINISHED
-            and len(prev_metrics) == 0
-            and not self.is_multi_objective
-        ):
+        # prev_metrics is always 0 for multi-objective runs
+        if len(prev_metrics) == 0 and not self.is_multi_objective:
             # run finished correctly, but never logged a metric
             wandb.termwarn(
                 f"{LOG_PREFIX}Run ({orun.sweep_run.id}) never logged metric: "
@@ -606,7 +603,7 @@ class OptunaScheduler(Scheduler):
                     + f"'{self._metric_defs}'. Check your sweep "
                     + "config and training script."
                 )
-                last_value = tuple([float("inf") if m.direction == optuna.study.StudyDirection.MINIMIZE else float("-inf") for m in self._metric_defs])
+                metrics = [[float("inf") if m.direction == optuna.study.StudyDirection.MINIMIZE else float("-inf") for m in self._metric_defs]]
             last_value = tuple(metrics[-1])
         else:
             last_value = prev_metrics[orun.num_metrics - 1]
