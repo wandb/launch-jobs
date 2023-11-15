@@ -10,8 +10,8 @@ from diffusers import (
 wandb_config = {
     "model_id": "runwayml/stable-diffusion-v1-5",
     "prompts": [
-        "A bee with a mischevious cartoon face waving a magical wandb in front of a psychadellic paradise",
-        "Two giraffes sipping spaghetti in a hot tub, 4K cinematic.",
+        "A bee with a mischievous cartoon face, waving a magical wandb in front of a psychedelic paradise.",
+        "Two giraffes sipping noodles out a hot tub, 4K cinematic.",
         "Street cats playing in a jazz band on a summer night, painted in the style of Van Gogh.",
     ],
     "num_inference_steps": 25,
