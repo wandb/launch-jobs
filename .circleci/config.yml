@@ -28,6 +28,9 @@ workflows:
   build_and_deploy:
     jobs:
       - build_and_push_image:
+          filters:
+            branches:
+              only: main
           matrix:
             parameters:
               subdir:
@@ -47,7 +50,3 @@ workflows:
                   "jobs/sweep_schedulers/optuna_scheduler",
                   "jobs/sweep_schedulers/wandb_scheduler",
                 ]
-        filters:
-          branches:
-            only:
-              - main
