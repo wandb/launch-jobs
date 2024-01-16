@@ -9,6 +9,7 @@ jobs:
       - image: cimg/python:3.7
     steps:
       - checkout
+      - setup_remote_docker
       - run:
           name: Check for Changes in Subdirectory
           command: |
@@ -19,7 +20,7 @@ jobs:
               cd << parameters.subdir >>
               image_name=$(echo "<< parameters.subdir >>" | sed 's/jobs\//job_/g; s/\//_/g')
               echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-              docker push wandb/$image_name:$CIRCLE_BRANCH
+              docker buildx build --platform linux/amd64,linux/arm64 -t wandb/$image_name:$CIRCLE_BRANCH --push .
             else
               echo "No changes in << parameters.subdir >>, skipping build."
             fi

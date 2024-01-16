@@ -117,10 +117,8 @@ def model_arch():
     # size with a kernel size of 2x2
     models.add(MaxPooling2D(pool_size=(2, 2)))
     models.add(Conv2D(128, (5, 5), padding="same", activation="relu"))
-
     models.add(MaxPooling2D(pool_size=(2, 2)))
     models.add(Conv2D(256, (5, 5), padding="same", activation="relu"))
-
     models.add(MaxPooling2D(pool_size=(2, 2)))
 
     # Once the convolutional and pooling
