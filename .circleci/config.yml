@@ -12,14 +12,14 @@ jobs:
       - run:
           name: Check for Changes in Subdirectory
           command: |
-            if git diff --name-only origin/<< .CIRCLE_BRANCH >>...HEAD | grep '<< parameters.subdir >>'; then
+            if git diff --name-only origin/$CIRCLE_BRANCH...HEAD | grep '<< parameters.subdir >>'; then
               echo "Changes detected in << parameters.subdir >>, building Docker image."
               echo $DOCKERHUB_TOKEN | docker login --username davidwandb --password-stdin
               docker buildx create --platform linux/amd64,linux/arm64 --use
               cd << parameters.subdir >>
               image_name=$(echo "<< parameters.subdir >>" | sed 's/jobs\//job_/g; s/\//_/g')
               echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-              docker push wandb/$image_name:<< .CIRCLE_BRANCH >>
+              docker push wandb/$image_name:$CIRCLE_BRANCH
             else
               echo "No changes in << parameters.subdir >>, skipping build."
             fi
