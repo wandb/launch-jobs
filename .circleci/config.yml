@@ -47,3 +47,7 @@ workflows:
                   "jobs/sweep_schedulers/optuna_scheduler",
                   "jobs/sweep_schedulers/wandb_scheduler",
                 ]
+        filters:
+          branches:
+            only:
+              - main
