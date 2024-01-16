@@ -62,6 +62,7 @@ def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
         metrics=["sparse_categorical_accuracy"],
     )
     model.summary()
+
     model.fit(
         train_X,
         train_y.astype(np.float32),

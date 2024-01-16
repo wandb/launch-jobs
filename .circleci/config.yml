@@ -12,7 +12,7 @@ jobs:
       - run:
           name: Check for Changes in Subdirectory
           command: |
-            if git diff --name-only origin/$CIRCLE_BRANCH...HEAD | grep '<< parameters.subdir >>'; then
+            if git diff --name-only HEAD~1...HEAD | grep '<< parameters.subdir >>'; then
               echo "Changes detected in << parameters.subdir >>, building Docker image."
               echo $DOCKERHUB_TOKEN | docker login --username davidwandb --password-stdin
               docker buildx create --platform linux/amd64,linux/arm64 --use
