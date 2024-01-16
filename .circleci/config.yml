@@ -1,26 +1,49 @@
 version: 2.1
 
 jobs:
-  build:
-    resource_class: medium
+  build_and_push_image:
+    parameters:
+      subdir:
+        type: string
     docker:
-      - image: cimg/base:2023.03
+      - image: cimg/python:3.7
     steps:
-      - setup_remote_docker:
-          docker_layer_caching: false
       - checkout
       - run:
-          name: Build Docker image
+          name: Check for Changes in Subdirectory
           command: |
-            docker buildx create --platform linux/amd64,linux/arm64 --use
-            echo $DOCKERHUB_TOKEN | docker login --username davidwandb --password-stdin
-            ./docker_build.py
+            if git diff --name-only origin/<< .CIRCLE_BRANCH >>...HEAD | grep '<< parameters.subdir >>'; then
+              echo "Changes detected in << parameters.subdir >>, building Docker image."
+              echo $DOCKERHUB_TOKEN | docker login --username davidwandb --password-stdin
+              docker buildx create --platform linux/amd64,linux/arm64 --use
+              cd << parameters.subdir >>
+              image_name=$(echo "<< parameters.subdir >>" | sed 's/jobs\//job_/g; s/\//_/g')
+              echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+              docker push wandb/$image_name:<< .CIRCLE_BRANCH >>
+            else
+              echo "No changes in << parameters.subdir >>, skipping build."
+            fi
 
 workflows:
-  build:
+  build_and_deploy:
     jobs:
-      - hold:
-          type: approval
-      - build:
-          requires:
-            - hold
+      - build_and_push_image:
+          matrix:
+            parameters:
+              subdir:
+                [
+                  "jobs/deploy_to_nvidia_triton",
+                  "jobs/deploy_to_sagemaker_endpoints",
+                  "jobs/distributed_test",
+                  "jobs/fashion_mnist_train",
+                  "jobs/github_actions_workflow_dispatch",
+                  "jobs/gpu_optimize_with_tensor_rt",
+                  "jobs/hello_world",
+                  "jobs/http_webhook",
+                  "jobs/msft_teams_webhook",
+                  "jobs/openai_evals",
+                  "jobs/sql_query",
+                  "jobs/stable_diffusion_inference",
+                  "jobs/sweep_schedulers/optuna_scheduler",
+                  "jobs/sweep_schedulers/wandb_scheduler",
+                ]
