@@ -1,0 +1,3 @@
+# This is temporarily required to make this repo compatible
+# with the `wandb job create git` command, which until wandb==0.16.3
+# required a requirements.txt to exist in the root of the repository.
