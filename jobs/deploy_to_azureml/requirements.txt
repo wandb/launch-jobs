@@ -1,4 +1,4 @@
-wandb
+wandb>=0.16.3
 azure-ai-ml
 azure-identity
 pydantic

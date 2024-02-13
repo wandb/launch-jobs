@@ -307,15 +307,15 @@ def generate_main_py(
 
 # These will be entered in the Launch config
 wandb_config = {
-    "entity": "",
-    "project": "",
-    "subscription_id": "",
-    "resource_group": "",
-    "workspace": "",
-    "keyvault_name": "",
-    "artifact_path": "",
-    "deployment_name": "",
-    "dry_run": True,
+    "entity": os.getenv("WANDB_ENTITY"),
+    "project": os.getenv("WANDB_PROJECT"),
+    "subscription_id": os.getenv("AZURE_SUBSCRIPTION_ID"),
+    "resource_group": os.getenv("AZURE_RESOURCE_GROUP"),
+    "workspace": os.getenv("AZURE_WORKSPACE"),
+    "keyvault_name": os.getenv("AZURE_KEYVAULT_NAME"),
+    "artifact_path": os.getenv("WANDB_ARTIFACT_PATH"),
+    "endpoint_name": os.getenv("AZURE_ENDPOINT_NAME"),
+    "deployment_name": os.getenv("AZURE_DEPLOYMENT_NAME"),
 }
 run = wandb.init(config=wandb_config)
 
@@ -330,7 +330,7 @@ if config.dry_run:
 logging.info(f"Downloading {config.artifact_path=}")
 api = wandb.Api()
 art = api.artifact(config.artifact_path)
-path = art.download()
+path = art.download(skip_cache=True)
 
 
 if config.artifact_type is not None and config.artifact_model_name is not None:
