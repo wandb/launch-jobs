@@ -17,9 +17,9 @@ This job accepts a model artifact from W&B and deploys it to an AzureML Online E
 ### W&B
 
 1. The job requires a supported model saved as an artifact in W&B. Currently, the job supports:
-   a. **Tensorflow** - We assume SavedModel format. The artifact should look like a SavedModel directory. - The endpoint accepts json with this shape: `{"data": input_tensor}`
-   b. **PyTorch** - We look for any `.pt` or `.pth` files and load the first one as the model. - The endpoint accepts json with this shape: `{"data": input_tensor}`
-   c. **ONNX** - We look for any `.onnx` files and load the first one as the model. - We use the ONNX metadata to determine input and output shapes. The endpoint accepts json with this pattern: `{"onnx_input_name1": input_tensor1, "onnx_input_name2": input_tensor2, ...}` (replace `onnx_input_name1` with whatever the actual input name is in the ONNX model).
+   1. **Tensorflow** - We assume SavedModel format. The artifact should look like a SavedModel directory. - The endpoint accepts json with this shape: `{"data": input_tensor}`
+   2. **PyTorch** - We look for any `.pt` or `.pth` files and load the first one as the model. - The endpoint accepts json with this shape: `{"data": input_tensor}`
+   3. **ONNX** - We look for any `.onnx` files and load the first one as the model. - We use the ONNX metadata to determine input and output shapes. The endpoint accepts json with this pattern: `{"onnx_input_name1": input_tensor1, "onnx_input_name2": input_tensor2, ...}` (replace `onnx_input_name1` with whatever the actual input name is in the ONNX model).
 
 ## Usage
 
