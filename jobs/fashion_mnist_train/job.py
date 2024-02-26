@@ -17,11 +17,14 @@ from wandb.keras import WandbMetricsLogger
 
 
 def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
-    run = wandb.init(project=project, entity=entity)
+    run = wandb.init(project=project, entity=entity, config={
+        "epochs": 10,
+        "learning_rate": 0.001,
+        "steps_per_epoch": 10,
+    })
 
     # get config, could be set from sweep scheduler
     train_config = run.config
-
     # get training parameters from config
     epochs = train_config.get("epochs", 10)
     learning_rate = train_config.get("learning_rate", 0.001)
@@ -97,7 +100,6 @@ def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
         plt.title(f"Pred: {labels[i]}")
     # Log plot
     wandb.log({"prediction-chart": plt})
-
 
 # Code from: https://www.geeksforgeeks.org/fashion-mnist-with-python-keras-and-deep-learning/
 def model_arch():
