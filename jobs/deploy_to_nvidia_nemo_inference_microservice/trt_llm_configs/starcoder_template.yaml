@@ -1,0 +1,27 @@
+model_repo_path: "/model-store/"
+use_ensemble: false
+model_type: "STARCODER"
+backend: "trt_llm"
+base_model_id: "ensemble"
+prompt_timer: 60
+gateway_ip: "gateway-api"
+server_port_internal: 9009
+customization_cache_capacity: 10000
+logging_level: "INFO"
+pipeline:
+  model_name: "ensemble"
+  num_instances: 1
+trt_llm:
+  use: true
+  model_name: "trt_llm"
+  model_type: "starcoder"
+  use_model_path: "/engine_dir"
+  data_type: "float16"
+  num_gpus: 1
+  tensor_para_size: 1
+  pipeline_para_size: 1
+  max_batch_size: 128
+  max_input_len: 8192
+  max_output_len: 8192
+  max_num_tokens: 40000
+  max_beam_width: 1
