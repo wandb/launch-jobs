@@ -1,0 +1,5 @@
+run_name: Deploy Llama 2 7b Chat Model
+config:
+  artifact: "wandb-artifact://megatruong/public-models/llama:v0"
+  artifact_model_type: "llama"
+  bucket_name: "andrew-nemo-bucket"
