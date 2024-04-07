@@ -1,0 +1,10 @@
+wandb
+azure-ai-ml
+azure-identity
+pydantic
+rich
+ruff
+numpy
+onnx
+torch
+tensorflow
