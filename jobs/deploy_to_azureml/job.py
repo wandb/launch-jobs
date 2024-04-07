@@ -1,11 +1,18 @@
+import ast
+import collections
 import datetime
 import logging
 import os
+import shutil
+import subprocess
 import textwrap
 from pathlib import Path
-from typing import Any, Literal, Optional, Tuple
+from typing import Any, Literal, Optional
 
-import wandb
+import numpy as np
+import onnx
+import tensorflow as tf
+import torch
 import yaml
 from azure.ai.ml import MLClient
 from azure.ai.ml.entities import (
@@ -15,54 +22,148 @@ from azure.ai.ml.entities import (
     ManagedOnlineEndpoint,
     Model,
 )
+from azure.core.exceptions import HttpResponseError
 from azure.identity import DefaultAzureCredential
-from pydantic import BaseModel
-from rich.logging import RichHandler
+from pydantic import BaseModel, Field
 
-logging.basicConfig(
-    level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
-)
+import wandb
+
+
+class ModelExtractor(ast.NodeVisitor):
+    def __init__(self):
+        self.imports = []
+        self.classes = []
+
+    def visit_Import(self, node):
+        for alias in node.names:
+            if alias.asname:
+                self.imports.append(f"import {alias.name} as {alias.asname}")
+            else:
+                self.imports.append(f"import {alias.name}")
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node):
+        for alias in node.names:
+            if alias.asname:
+                self.imports.append(
+                    f"from {node.module} import {alias.name} as {alias.asname}"
+                )
+            else:
+                self.imports.append(f"from {node.module} import {alias.name}")
+        self.generic_visit(node)
+
+    def visit_ClassDef(self, node):
+        # This ensures the class definition is preserved as is, including method definitions.
+        self.classes.append(ast.unparse(node))
+
+
+def extract_model_code(file_path: str) -> str:
+    with open(file_path, "r") as file:
+        tree = ast.parse(file.read(), filename=file_path)
+
+    extractor = ModelExtractor()
+    extractor.visit(tree)
+
+    return "\n".join(extractor.imports + extractor.classes)
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+os.environ["WANDB_ENABLE_RICH_LOGGING"] = "true"
+
+if os.getenv("WANDB_ENABLE_RICH_LOGGING"):
+    from rich.console import Console
+    from rich.logging import RichHandler
+
+    console = Console(width=120)
+    logger.addHandler(
+        RichHandler(rich_tracebacks=True, tracebacks_show_locals=True, console=console)
+    )
+else:
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    console_handler.setFormatter(formatter)
+
+    logger.addHandler(console_handler)
 
 ArtifactType = Literal["onnx", "pytorch", "tensorflow"]
 
+time_now = datetime.datetime.now().strftime("%m%d%H%M%f")
+default_image = "mcr.microsoft.com/azureml/inference-base-2204:latest"
+pytorch_model_code_fname = "model_code.py"
+scoring_fname = "score.py"
+env_fname = "conda.yml"
+request_file = "test.json"
 
-class Config(BaseModel):
+
+class AzureConfigs(BaseModel):
     # Azure standard configs
     subscription_id: str
     resource_group: str
     workspace: str
 
+    # Keyvault containing secrets like the W&B API Key
+    keyvault: str
+
+
+class WandbConfigs(BaseModel):
     # The entity/project that each deployment will log to when the endpoint is hit
     entity: str
     project: str
-    artifact_path: str  # Path to W&B artifact that contains model file
-    keyvault_name: str  # Keyvault must contain the W&B API key under the key name "wandb-api-key"
 
-    # Customizable endpoint configs
-    endpoint_name: str = "endpoint-" + datetime.datetime.now().strftime("%m%d%H%M%f")
-    endpoint_description: Optional[str] = None
-    endpoint_tags: Optional[dict[str, Any]] = None
 
-    # Customizable deployment configs
-    deployment_name: str = "deployment-" + datetime.datetime.now().strftime(
-        "%m%d%H%M%f"
-    )
-    deployment_instance_type: str = "Standard_DS3_v2"
-    deployment_instance_count: int = 1
-    image: str = "mcr.microsoft.com/azureml/inference-base-2204:latest"
-    custom_image: bool = False  # Set to true if you want to bring your own container image with its own entrypoint
+class DeployModelArtifact(BaseModel):
+    path: str  # Path to W&B artifact that contains model file
 
-    # Specify both `artifact_type` and `artifact_model_name` to skip the model type inference step
-    artifact_type: Optional[ArtifactType] = None
-    artifact_model_name: Optional[str] = None
+    # Specify both `type` and `name` to skip the model type inference step
+    type: Optional[ArtifactType] = None
+    name: Optional[str] = None
+
+
+class EndpointConfigs(BaseModel):
+    name: str = f"endpoint-{time_now}"
+    description: Optional[str] = None
+    tags: dict[str, Any] = Field(default_factory=lambda: {"source": "wandb-deploy"})
+
+
+class DeploymentConfigs(BaseModel):
+    name: str = f"deployment-{time_now}"
+    instance_type: str = "Standard_DS3_v2"
+    instance_count: int = 1
+    image: str = default_image
+    # If not specified, generates score.py and requirements.txt from `scoring_artifact_path`
+    scoring_artifact_path: Optional[str] = None
+
+
+class Config(BaseModel):
+    azure: AzureConfigs
+    wandb: WandbConfigs
+    deploy_model_artifact: DeployModelArtifact
+
+    endpoint: EndpointConfigs = Field(default_factory=EndpointConfigs)
+    deployment: DeploymentConfigs = Field(default_factory=DeploymentConfigs)
 
     # Do all the autogen and setup, but don't actually deploy the endpoint
     dry_run: bool = False
 
+    @property
+    def deployed_model_path(self):
+        workspace = self.azure.workspace
+        endpoint = self.endpoint.name
+        deployment = self.deployment.name
 
-def infer_model_type_and_name(
-    path: str,
-) -> Tuple[Literal["pytorch", "tensorflow", "onnx", "unknown"], str]:
+        return os.path.join(workspace, endpoint, deployment)
+
+
+class InferredModel(BaseModel):
+    type: ArtifactType
+    name: str
+
+
+def infer_model(path: str) -> InferredModel:
     # Define possible file extensions for each model type
     pytorch_extensions = {".pt", ".pth"}
     tensorflow_files = {"saved_model.pb"}
@@ -73,34 +174,87 @@ def infer_model_type_and_name(
 
     # Check if the directory exists
     if not dir_path.exists():
-        return "Directory does not exist."
+        raise Exception("Directory does not exist")
 
-    # Iterate over files in the directory using Path objects
-    for file_path in dir_path.iterdir():
-        if file_path.is_file():  # Ensure it's a file
-            # Check the file extension against known model types
-            if file_path.suffix in pytorch_extensions:
-                return ("pytorch", file_path.name)
-            elif file_path.name in tensorflow_files:
-                return ("tensorflow", file_path.parent.name)
-            elif file_path.suffix in onnx_extensions:
-                return ("onnx", file_path.name)
+    def walk(path: Path) -> Optional[InferredModel]:
+        if path.is_file():
+            if path.suffix in pytorch_extensions:
+                return InferredModel(type="pytorch", name=path.name)
+            elif path.suffix in onnx_extensions:
+                return InferredModel(type="onnx", name=path.name)
+            elif path.name in tensorflow_files:
+                # Get the SavedModel parent folder
+                if path.parent.name == "saved_model":
+                    return InferredModel(type="tensorflow", name=path.parent.name)
+                elif path.parent.parent.name == "saved_model":
+                    return InferredModel(
+                        type="tensorflow",
+                        name=f"{path.parent.parent.name}/{path.parent.name}",
+                    )
+        elif path.is_dir():
+            for p in path.iterdir():
+                if (result := walk(p)) is not None:
+                    return result
+        return None
 
-    return ("unknown", "")
+    if (result := walk(dir_path)) is None:
+        raise Exception("Unable to infer model type, please specify manually")
+
+    return result
+
+    # # Iterate over files in the directory using Path objects
+    # for file_path in dir_path.iterdir():
+    #     if file_path.is_file():  # Ensure it's a file
+    #         # Check the file extension against known model types
+    #         if file_path.suffix in pytorch_extensions:
+    #             return InferredModel(type="pytorch", name=file_path.name)
+    #         # elif file_path.name in tensorflow_files:
+    #         #     return InferredModel(type="tensorflow", name=file_path.parent.name)
+    #         elif file_path.suffix in onnx_extensions:
+    #             return InferredModel(type="onnx", name=file_path.name)
+    #     elif file_path.is_dir():
+    #         if file_path.name in tensorflow_files:
+    #             return InferredModel(type="tensorflow", name=file_path.name)
+
+    raise Exception("Unable to infer model type, please specify manually")
 
 
 def generate_conda_yml(
-    artifact_type: ArtifactType, conda_file: str = "conda.yml"
+    artifact_type: ArtifactType,
+    fname: str = "conda.yml",
+    *,
+    config_artifact: Optional[str] = None,
 ) -> None:
-    """In future, this could pull from the conda env file of the run that generated the input model artifact."""
+    """In future, this could pull from the conda env file of the run that generated
+    the input model artifact.
+    """
+    fall_back_to_defaults = True
 
-    deps_map = {
-        "pytorch": ["torch", "timm"],
-        "tensorflow": ["tensorflow"],
-        "onnx": ["onnxruntime", "numpy"],
-    }
+    # Try to get requirements from provided artifact
+    if config_artifact is not None:
+        api = wandb.Api()
+        art = api.artifact(config_artifact)
+        run = art.logged_by
 
-    deps = deps_map.get(artifact_type, [])
+        for f in run.files():
+            if f.name == "requirements.txt":
+                path = f.download()
+                with open(path.name) as ff:
+                    deps = ff.read().splitlines()
+
+                fall_back_to_defaults = False
+                break
+
+    # Otherwise, fall back to defaults
+    if fall_back_to_defaults:
+        logger.info("`requirements.txt` not found, falling back to defaults for env")
+        base_deps = ["onnx", "onnxruntime", "numpy"]
+        deps_map = {
+            "pytorch": ["torch", "timm", "transformers", "accelerate", *base_deps],
+            "tensorflow": ["tensorflow", "transformers", "accelerate", *base_deps],
+            "onnx": base_deps,
+        }
+        deps = deps_map[artifact_type]
 
     d = {
         "name": "deployment-env",
@@ -125,296 +279,411 @@ def generate_conda_yml(
         ],
     }
 
-    with open(conda_file, "w") as f:
+    with open(fname, "w") as f:
         yaml.dump(d, f)
 
 
-def generate_main_py(
-    entity: str, project: str, model_name: str, artifact_type: ArtifactType
+def infer_pytorch_model_code(model_art: wandb.Artifact) -> str:
+    if (run := model_art.logged_by()) is None:
+        raise Exception("Model artifact does not have a generating run")
+
+    if (code_path := run.metadata.get("codePath")) is None:
+        raise Exception("Run is missing codePath; can't infer imports")
+
+    for f in run.files():
+        if f.name == f"code/{code_path}":
+            break
+    else:
+        raise Exception("Code file not found")
+
+    code_path = f.download()
+    model_code = extract_model_code(code_path.name)
+
+    with open(pytorch_model_code_fname, "w") as f:
+        f.write(model_code)
+
+    return model_code
+
+
+def generate_scoring_file(
+    entity: str,
+    project: str,
+    model_name: str,
+    artifact_type: ArtifactType,
+    fname: str,
+    model_art: Optional[wandb.Artifact] = None,
 ) -> None:
-    # NOTE: Most of the examples use `score.py` as the scoring script, but I had to use `main.py`
-    # because that's what the inference server defaults to and I wasn't sure how to change the file name.
+    # Try to get scoring file from provided artifact
+    # Otherwise fall back to defaults
 
     # Generate imports
-    import_code = "# Generate imports"
     if artifact_type == "pytorch":
-        import_code += """
-        import torch
-        """
-    elif artifact_type == "tensorflow":
-        import_code += """
-        import tensorflow as tf
-        """
-    elif artifact_type == "onnx":
-        import_code += """
-        import numpy
-        import onnxruntime
-        """
-
-    # Generate globals
-    global_code = "# Generate globals"
-    if artifact_type == "pytorch":
-        global_code += """
-            global model
-            global wandb_run
+        import_code = textwrap.dedent(
             """
+            import torch
+            """
+        )
     elif artifact_type == "tensorflow":
-        global_code += """
-            global model
-            global wandb_run
+        import_code = """
+            import tensorflow as tf
             """
     elif artifact_type == "onnx":
-        global_code += """
-            global session
-            global wandb_run
+        import_code = """
+            import numpy as np
+            import onnx
+            import onnxruntime
             """
+    import_code = textwrap.dedent(import_code)
 
     # Generate model loading code
-    loading_code = "# Generate model loading code"
     if artifact_type == "pytorch":
-        loading_code += f"""
+        model_code = infer_pytorch_model_code(model_art)
+        loading_code = "\n" + textwrap.dedent(model_code)
+        loading_code += textwrap.dedent(
+            f"""
             model_path = os.path.join(os.getenv("AZUREML_MODEL_DIR"), "{model_name}")
-            model = torch.load(model_path)
+
+            global model
+            state_dict = torch.load(model_path)
+            model.load_state_dict(state_dict)
+            model.eval()
+            # model = torch.load(model_path)
             """
+        )
     elif artifact_type == "tensorflow":
-        loading_code += f"""
-            # model_path = os.getenv("AZUREML_MODEL_DIR")
-            model_path = os.path.join(os.getenv("AZUREML_MODEL_DIR"), "{model_name}")
+        loading_code = f"""
+            model_path = os.path.join(os.getenv("AZUREML_MODEL_DIR"), "{model_art.name}", "{model_name}")
+
+            global model
             model = tf.saved_model.load(model_path)
             """
     elif artifact_type == "onnx":
-        loading_code += f"""
+        loading_code = f"""
             model_path = os.path.join(os.getenv("AZUREML_MODEL_DIR"), "{model_name}")
-            session = onnxruntime.InferenceSession(model_path)
             """
-
-    # Generate json to model input code
-    converter_code = "# Generate json to model input code"
-    if artifact_type == "pytorch":
-        converter_code += """
-                processed_data = torch.tensor(json_dict['data']).float()
-                """
-    elif artifact_type == "tensorflow":
-        converter_code += """
-                processed_data = tf.convert_to_tensor(json_dict['data'])
-                """
-    elif artifact_type == "onnx":
-        converter_code += """
-                processed_data = {}
-                for k,v in json_dict.items():
-                    processed_data[k] = numpy.array(v, dtype=numpy.float32)
-                """
+        loading_code += r"""
+            global session
+            session = onnxruntime.InferenceSession(model_path)
+            
+            global model
+            model = onnx.load(model_path)
+            
+            global dtype_map
+            dtype_map = {
+                onnx.TensorProto.FLOAT: np.float32,
+                onnx.TensorProto.DOUBLE: np.float64,
+                onnx.TensorProto.INT32: np.int32,
+                onnx.TensorProto.INT64: np.int64,
+            }
+            """
+    loading_code = textwrap.dedent(loading_code)
 
     # Generate inference code
-    inference_code = "# Generate inference code"
     if artifact_type == "pytorch":
-        inference_code += """
-                output = model(processed_data).tolist()
-                """
+        inference_code = r"""
+            model_inputs = {k: torch.tensor(v) for k, v in json_dict.items()}
+            output = model(**model_inputs).tolist()
+            """
     elif artifact_type == "tensorflow":
-        inference_code += """
-                infer = model.signatures['serving_default']
-                output = infer(processed_data)["predictions"].numpy().tolist()
-                """
+        inference_code = r"""
+            model_inputs = {k: tf.convert_to_tensor(v) for k, v in json_dict.items()}
+            infer = model.signatures['serving_default']
+            output = infer(**model_inputs)["predictions"].numpy().tolist()
+            """
     elif artifact_type == "onnx":
-        inference_code += """
-                input_names = [i.name for i in session.get_inputs()]
-                output_names = [i.name for i in session.get_outputs()]
+        inference_code = r"""
+            model_inputs = {}
+            for input_tensor in model.graph.input:
+                input_name = input_tensor.name
+                input_dtype = input_tensor.type.tensor_type.elem_type
+                if (expected_dtype := dtype_map.get(input_dtype)) is None:
+                    raise ValueError(f"Found unsupported {input_dtype=}")
 
-                input_dict = {}
-                for name in input_names:
-                    assert name in processed_data
-                    input_dict[name] = processed_data[name]
+                # Convert the data to the appropriate numpy data type
+                if input_name in json_dict:
+                    converted_data = np.asarray(json_dict[input_name], dtype=expected_dtype)
+                    model_inputs[input_name] = converted_data
+                else:
+                    raise ValueError(f"Input data for '{input_name}' not provided in JSON.")
 
-                output = session.run(output_names, input_dict)
-                output = [v.tolist() for v in output]
-        """
+            output = [x.tolist() for x in session.run(None, model_inputs)]
+            """
+    inference_code = textwrap.dedent(inference_code)
 
     text = textwrap.dedent(
         f"""
-        import json
-        import logging
-        import os
-        import wandb
+import json
+import logging
+import os
+import wandb
 
-        from azure.identity import ManagedIdentityCredential
-        from azure.keyvault.secrets import SecretClient
+from azure.identity import ManagedIdentityCredential
+from azure.keyvault.secrets import SecretClient
 
-        {import_code}
+# GENERATED IMPORTS
+# -----------------
+{import_code}
+# -----------------
 
-        def load_secrets():
-            secret_clients = {{}}
-            credential = ManagedIdentityCredential()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
-            for k, v in os.environ.items():
-                if "KV_SECRET" in k:
-                    trimmed_k = k.replace("KV_SECRET_", "")
-                    secret_name, vault_url = v.split("@")
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
 
-                    if vault_url in secret_clients:
-                        secret_client = secret_clients[vault_url]
-                    else:
-                        secret_client = SecretClient(vault_url=vault_url, credential=credential)
-                        secret_clients[vault_url] = secret_client
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
 
-                    secret_value = secret_client.get_secret(secret_name).value
-                    os.environ[trimmed_k] = secret_value
+def load_secrets():
+    secret_clients = {{}}
+    credential = ManagedIdentityCredential()
 
+    for k, v in os.environ.items():
+        if "KV_SECRET" in k:
+            trimmed_k = k.replace("KV_SECRET_", "")
+            secret_name, vault_url = v.split("@")
 
-        def init():
-            {global_code}
-
-            load_secrets()
-
-            {loading_code}
-
-            wandb_run = wandb.init(
-                {entity=},
-                {project=},
-                resume="allow",
-                job_type="deploy-to-azureml",
-            )
-            logging.info("Init complete")
-
-
-        def run(raw_data):
-            logging.info("Request received")
-            json_dict = json.loads(raw_data)
-            output = None
-            error = None
-
-            table = wandb.Table(columns=["inputs", "outputs", "error"])
-            try:
-                {converter_code}
-                {inference_code}
-            except Exception as e:
-                logging.info("Error processing request")
-                error = str(e)
+            if vault_url in secret_clients:
+                secret_client = secret_clients[vault_url]
             else:
-                logging.info("Successfully processed request")
-            
-            table.add_data(json_dict, output, error)
+                secret_client = SecretClient(vault_url=vault_url, credential=credential)
+                secret_clients[vault_url] = secret_client
 
-            wandb_run.log({{"inputs": json_dict, "outputs": output, "table": table}})
-            return output
+            secret_value = secret_client.get_secret(secret_name).value
+            os.environ[trimmed_k] = secret_value
 
+
+def init():
+    global wandb_run
+    wandb_run = None
+    
+    try:
+        load_secrets()
+    except Exception as e:
+        logger.warning("Error when loading secrets.  Logging to W&B disabled")
+    else:
+        wandb_run = wandb.init(
+            {entity=},
+            {project=},
+            resume="allow",
+            job_type="deploy-to-azureml",
+        )
+
+    # GENERATED MODEL LOADING CODE
+    # ----------------------------
+    {textwrap.indent(loading_code, " "*4)}
+    # ----------------------------
+
+    logger.info("Init complete")
+
+
+def run(raw_data):
+    logger.info("Request received")
+    json_dict = json.loads(raw_data)
+    output = None
+    error = None
+    
+    try:
+        # GENERATED INFERENCE CODE
+        # ------------------------
+        {textwrap.indent(inference_code, " "*8)}
+        # ------------------------
+    except Exception as e:
+        logger.info("Error processing request", e)
+        error = str(e)
+    else:
+        logger.info("Successfully processed request")
+
+    if wandb_run is not None:
+        table = wandb.Table(columns=["inputs", "outputs", "error"])
+        table.add_data(json_dict, output, error)
+        wandb_run.log({{"table": table}})
+
+    return output
     """
     )
 
-    with open("main.py", "w") as f:
+    with open(fname, "w") as f:
         f.write(text)
 
+    subprocess.run(["ruff", "check", fname, "--select", "I", "--fix"])
+    subprocess.run(["ruff", "format", fname])
 
-# These will be entered in the Launch config
-wandb_config = {
-    "entity": os.getenv("WANDB_ENTITY"),
-    "project": os.getenv("WANDB_PROJECT"),
-    "subscription_id": os.getenv("AZURE_SUBSCRIPTION_ID"),
-    "resource_group": os.getenv("AZURE_RESOURCE_GROUP"),
-    "workspace": os.getenv("AZURE_WORKSPACE"),
-    "keyvault_name": os.getenv("AZURE_KEYVAULT_NAME"),
-    "artifact_path": os.getenv("WANDB_ARTIFACT_PATH"),
-    "endpoint_name": os.getenv("AZURE_ENDPOINT_NAME"),
-    "deployment_name": os.getenv("AZURE_DEPLOYMENT_NAME"),
-}
-run = wandb.init(config=wandb_config)
 
-# if user provides custom configs via Launch, get them back
+run = wandb.init()
 config = Config.model_validate(dict(run.config))
-logging.info(f"Starting with {config=}")
 
+logger.info(f"Starting with {config=}")
 if config.dry_run:
-    logging.info("Starting in dry run mode")
+    logger.info("Starting in dry run mode")
     os.environ["WANDB_MODE"] = "disabled"
 
-logging.info(f"Downloading {config.artifact_path=}")
+logger.info(f"Downloading {config.deploy_model_artifact.path=}")
 api = wandb.Api()
-art = api.artifact(config.artifact_path)
-path = art.download(skip_cache=True)
+model_art = api.artifact(config.deploy_model_artifact.path)
+path = model_art.download(skip_cache=True)
+run.use_artifact(model_art)
 
 
-if config.artifact_type is not None and config.artifact_model_name is not None:
-    logging.info(
-        f"Using user-provided {config.artifact_type=} and {config.artifact_model_name=}"
-    )
-    model_type = config.artifact_type
-    model_name = config.artifact_model_name
+# Get model type and name
+if (
+    config.deploy_model_artifact.type is not None
+    and config.deploy_model_artifact.name is not None
+):
+    model_type = config.model_atifact.type
+    model_name = config.deploy_model_artifact.name
 else:
-    logging.info("Inferring model type and name")
-    model_type, model_name = infer_model_type_and_name(path)
-    if model_type == "unknown":
-        raise ValueError(
-            "Model type could not be inferred, please specify it manually."
-        )
+    logger.info("Inferring model type and name...")
+    inferred_model = infer_model(path)
+    model_type = inferred_model.type
+    model_name = inferred_model.name
 
-logging.info(f"Using {model_type=} and {model_name=}")
+logger.info(f"Using {model_type=} and {model_name=}")
 
 
-logging.info("Configuring model and environment")
-conda_file = "conda.yml"
-generate_conda_yml(artifact_type=model_type, conda_file=conda_file)
+# Check model compat
+if model_type == "pytorch":
+    pass
+    # torch models need the class, so either user provides or we infer
+
+    model_path = os.path.join(path, model_name)
+    try:
+        model = torch.load(model_path)
+
+    # Loaded a pickle: Will error because the class is not defined in this file, but
+    # it means the user has the correct type of pytorch file -- continue on.
+    except AttributeError:
+        pass
+    else:
+        # We can't support state dicts because we don't know what the model class is
+        if isinstance(model, collections.OrderedDict):
+            raise ValueError(
+                "Model appears to be a state dict.  Please save model artifact as a pickle (torch.save without state_dict()) and try again."
+            )
 
 
-logging.info("Generating a main.py")
-generate_main_py(
-    entity=config.entity,
-    project=config.project,
-    model_name=model_name,
-    artifact_type=model_type,
-)
+# Get score.py and environment
 
+if config.deployment.scoring_artifact_path is not None:
+    scoring_art = api.artifact(config.deployment.scoring_artifact_path)
+    path2 = Path(scoring_art.download(skip_cache=True))
+    shutil.move(path2 / scoring_fname, scoring_fname)
+    shutil.move(path2 / env_fname, env_fname)
+    run.use_artifact(scoring_art)
+else:
+    logger.info("Generating score.py and environment...")
+    logger.info("Generating score.py...")
+    generate_scoring_file(
+        entity=config.wandb.entity,
+        project=config.wandb.project,
+        model_name=model_name,
+        artifact_type=model_type,
+        fname=scoring_fname,
+        model_art=model_art,
+    )
+    logger.info(f"Generating {env_fname}...")
+    generate_conda_yml(artifact_type=model_type, fname=env_fname)
+
+    scoring_art = wandb.Artifact("score_env", "score_env")
+    scoring_art.add_file(scoring_fname)
+    scoring_art.add_file(env_fname)
+    if model_type == "pytorch":
+        scoring_art.add_file(pytorch_model_code_fname)
+
+    run.use_artifact(scoring_art)
+
+
+# Create the endpoint
+logger.info("Starting create endpoint process (this may take a while...)")
 ml_client = MLClient(
     DefaultAzureCredential(),
-    config.subscription_id,
-    config.resource_group,
-    config.workspace,
+    config.azure.subscription_id,
+    config.azure.resource_group,
+    config.azure.workspace,
 )
-
-
-logging.info("Creating endpoint...")
-if (tags := config.endpoint_tags) is None:
-    tags = {"source": "wandb-deploy"}
 
 endpoint = ManagedOnlineEndpoint(
-    name=config.endpoint_name,
-    description=config.endpoint_description,
+    name=config.endpoint.name,
+    description=config.endpoint.description,
     auth_mode="key",
-    tags=tags,
+    tags=config.endpoint.tags,
 )
-logging.info(f"{endpoint=}")
+logger.info(f"Creating {endpoint=}")
 if not config.dry_run:
-    ml_client.online_endpoints.begin_create_or_update(endpoint).result()
+    try:
+        ml_client.online_endpoints.begin_create_or_update(endpoint).result()
+    except HttpResponseError as e:
+        logger.error("Error creating endpoint: " + str(e))
 
 
-logging.info("Creating deployment...")
-dep_kwargs = {
-    "name": config.deployment_name,
-    "endpoint_name": config.endpoint_name,
-    "instance_type": config.deployment_instance_type,
-    "instance_count": config.deployment_instance_count,
+# Create the deployment
+logger.info("Starting create deployment process (this may take a while...)")
+d = {
+    "name": config.deployment.name,
+    "endpoint_name": config.endpoint.name,
+    "instance_type": config.deployment.instance_type,
+    "instance_count": config.deployment.instance_count,
 }
 
-if config.custom_image:
-    dep_kwargs["environment"] = Environment(image=config.image)
+if config.deployment.image != default_image:
+    d["environment"] = Environment(image=config.deployment.image)
 else:
-    dep_kwargs["environment"] = Environment(conda_file=conda_file, image=config.image)
-    dep_kwargs["code_configuration"] = CodeConfiguration(
-        code=".", scoring_script="main.py"
-    )
-    dep_kwargs["environment_variables"] = {
-        "KV_SECRET_WANDB_API_KEY": f"wandb-api-key@https://{config.keyvault_name}.vault.azure.net"
+    d["environment"] = Environment(conda_file=env_fname, image=config.deployment.image)
+    d["code_configuration"] = CodeConfiguration(code=".", scoring_script="score.py")
+    d["environment_variables"] = {
+        "KV_SECRET_WANDB_API_KEY": f"wandb-api-key@https://{config.azure.keyvault}.vault.azure.net"
     }
 
     if model_type == "tensorflow":
-        dep_kwargs["model"] = Model(path=path)
+        d["model"] = Model(path=path)
     else:
-        dep_kwargs["model"] = Model(path=os.path.join(path, model_name))
+        d["model"] = Model(path=os.path.join(path, model_name))
 
-
-deployment = ManagedOnlineDeployment(**dep_kwargs)
-logging.info(f"{deployment=}")
+deployment = ManagedOnlineDeployment(**d)
+logger.info(f"Creating {deployment=}")
 if not config.dry_run:
-    ml_client.online_deployments.begin_create_or_update(deployment).result()
+    try:
+        ml_client.online_deployments.begin_create_or_update(deployment).result()
+    except HttpResponseError as e:
+        logger.error("Error creating deployment: " + str(e))
 
+logger.info("Checking model inputs...")
+if model_type == "pytorch":
+    logger.info("Unable to infer pytorch model inputs (check model manually)")
+
+elif model_type == "tensorflow":
+    model_path = os.path.join(path, model_name)
+    model = tf.saved_model.load(model_path)
+
+    sig = model.signatures["serving_default"]
+    input_details = sig.structured_input_signature[1]
+
+    input_shapes = {name: spec.shape for name, spec in input_details.items()}
+    logger.info(
+        f"Your model ({config.deployed_model_path}) is expecting a json payload with {input_shapes=}"
+    )
+
+elif model_type == "onnx":
+    dtype_map = {
+        onnx.TensorProto.FLOAT: np.float32,
+        onnx.TensorProto.DOUBLE: np.float64,
+        onnx.TensorProto.INT32: np.int32,
+        onnx.TensorProto.INT64: np.int64,
+    }
+
+    model_path = os.path.join(path, model_name)
+    model = onnx.load(model_path)
+
+    input_shapes = {}
+    for input_tensor in model.graph.input:
+        name = input_tensor.name
+        shape = [d.dim_value for d in input_tensor.type.tensor_type.shape.dim]
+        input_shapes[name] = shape
+    logger.info(
+        f"Your model ({config.deployed_model_path}) is expecting a json payload with {input_shapes=}"
+    )
+    logger.warning("ONNX models require the inputs to be in order!")
+
+logger.info("Finished deployment!")
 run.finish()
-logging.info("All done")

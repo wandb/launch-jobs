@@ -1,5 +1,10 @@
-wandb>=0.16.3
+wandb
 azure-ai-ml
 azure-identity
 pydantic
 rich
+ruff
+numpy
+onnx
+torch
+tensorflow

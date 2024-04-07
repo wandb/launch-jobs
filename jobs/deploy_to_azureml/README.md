@@ -17,40 +17,39 @@ This job accepts a model artifact from W&B and deploys it to an AzureML Online E
 ### W&B
 
 1. The job requires a supported model saved as an artifact in W&B. Currently, the job supports:
-   1. **Tensorflow** - We assume SavedModel format. The artifact should look like a SavedModel directory. - The endpoint accepts json with this shape: `{"data": input_tensor}`
-   2. **PyTorch** - We look for any `.pt` or `.pth` files and load the first one as the model. - The endpoint accepts json with this shape: `{"data": input_tensor}`
-   3. **ONNX** - We look for any `.onnx` files and load the first one as the model. - We use the ONNX metadata to determine input and output shapes. The endpoint accepts json with this pattern: `{"onnx_input_name1": input_tensor1, "onnx_input_name2": input_tensor2, ...}` (replace `onnx_input_name1` with whatever the actual input name is in the ONNX model).
+
+   1. **Tensorflow** - We assume SavedModel format. The artifact should look like a SavedModel directory.
+   2. **PyTorch** - We look for any `.pt` or `.pth` files and load the first one as the model.
+   3. **ONNX** - We look for any `.onnx` files and load the first one as the model.
+
+2. You will also need to [set up a launch queue](https://docs.wandb.ai/guides/launch/setup-launch) with an env file that contains `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`
 
 ## Usage
 
-1. If running from scratch from this repo, build and run the deployer container. This creates and runs the Launch job to load a model from W&B Artifacts into AzureML Online Endpoints.
+1. If the container doesn't already exist, build:
 
-```
-docker buildx build -t $WANDB_NAME jobs/deploy_to_azureml
+   ```shell
+   docker buildx build -t $IMAGE_NAME:$IMAGE_TAG -f Dockerfile.wandb .
+   ```
 
-docker run \
-    -e WANDB_API_KEY=$WANDB_API_KEY \
-    -e WANDB_ENTITY=$WANDB_ENTITY \
-    -e WANDB_PROJECT=$WANDB_PROJECT \
-    -e WANDB_NAME=$WANDB_NAME \
-    -e AZURE_CLIENT_ID=$AZURE_CLIENT_ID \
-    -e AZURE_CLIENT_SECRET=$AZURE_CLIENT_SECRET \
-    -e AZURE_TENANT_ID=$AZURE_TENANT_ID \
-    --rm --net=host \
+2. Add to launch agent queue by passing a valid launch config
 
-    # if you're running from scratch, you may need to pass these env vars (which correspond to the config):
-    -e AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID \
-    -e AZURE_RESOURCE_GROUP=$AZURE_RESOURCE_GROUP \
-    -e AZURE_WORKSPACE=$AZURE_WORKSPACE \
-    -e AZURE_KEYVAULT_NAME=$AZURE_KEYVAULT_NAME \
-    -e AZURE_ENDPOINT_NAME=$AZURE_ENDPOINT_NAME \
-    -e AZURE_DEPLOYMENT_NAME=$AZURE_DEPLOYMENT_NAME \
-    -e WANDB_ARTIFACT_PATH=$WANDB_ARTIFACT_PATH \
+   ```shell
+      wandb launch -d $IMAGE_NAME:$IMAGE_TAG -q $YOUR_QUEUE -p $YOUR_PROJECT -c $YOUR_CONFIG
+   ```
 
-    $WANDB_NAME
-```
+   For sample configs, see `configs/`. You can convert one of the configs with `yq` and `jq`. You'll need to update the azure configs to your own!
 
-2. If the Launch job already exists in W&B, you can configure and run the job from the W&B UI or CLI.
+   ```
+   YOUR_CONFIG="example.json" \
+   EXAMPLE_CONFIG_YML="configs/pytorch.yml" \
+   temp=$(yq eval -o=json $EXAMPLE_CONFIG_YML > $YOUR_CONFIG) \
+   echo $temp | jq '{overrides: {run_config: .}}' > "$YOUR_CONFIG"
+   ```
+
+   If you want to see what the job will run through without actually deploying, set the config `dry_run: true`
+
+3. If the Launch job already exists in W&B, you can configure and run the job from the W&B UI or CLI.
 
 ## Note on permissions
 
