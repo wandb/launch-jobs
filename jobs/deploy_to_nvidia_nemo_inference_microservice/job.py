@@ -1,16 +1,15 @@
 import logging
-import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Literal, Optional
 
-import boto3
-import wandb
 import yaml
 from pydantic import BaseModel
 from rich.logging import RichHandler
+
+import wandb
 
 logging.basicConfig(
     level="INFO",
@@ -30,6 +29,18 @@ model_config_mapping = {
     "llama": "llama_template.yaml",
     "starcoder": "starcoder_template.yaml",
 }
+
+
+def recursive_merge_overrides(base: dict, overrides: dict) -> dict:
+    for k, v in overrides.items():
+        if k in base:
+            if isinstance(base_v := base[k], dict) and isinstance(v, dict):
+                recursive_merge_overrides(base_v, v)
+            elif base_v != v:
+                base[k] = v
+        else:
+            base[k] = v
+    return base
 
 
 def run_cmd(cmd: list[str], error_msg: Optional[str] = None, shell: bool = False):
@@ -56,10 +67,7 @@ class Config(BaseModel):
     artifact: str
     artifact_model_type: Literal["llama", "starcoder"]
 
-    bucket_name: str
     nim_model_store_path: str = "/model-store/"
-    s3_model_repo_path: str = "models"
-
     openai_port: int = 9999
     nemo_port: int = 9998
 
@@ -73,7 +81,10 @@ class Config(BaseModel):
     update_repo_names: Literal[
         False
     ] = False  # TODO: Add this option back when Nvidia officially supports alt repos
-    push_to_s3: bool = False
+    log_converted_model: bool = True
+
+    # If specified, overrides the keys provided in the default config at trt_llm_configs/{template.yaml}
+    trt_llm_config_overrides: Optional[dict] = None
 
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
@@ -97,6 +108,9 @@ if base_trt_config_fname is None:
 base_trt_config_path = f"./trt_llm_configs/{base_trt_config_fname}"
 with open(base_trt_config_path) as f:
     trt_config = yaml.safe_load(f)
+
+if config.trt_llm_config_overrides:
+    trt_config = recursive_merge_overrides(trt_config, config.trt_llm_config_overrides)
 
 
 if config.download_artifact:
@@ -162,17 +176,14 @@ if config.update_repo_names:
             src_dir = path / "1"
             shutil.copytree(src_dir, new_path)
 
-# Optional: Push to S3 (in future release, we can load models from here)
-if config.push_to_s3:
-    logger.info(f"Pushing models to S3 {config.bucket_name=}")
-    s3_client = boto3.client("s3")
-    for root, _, files in os.walk(config.nim_model_store_path):
-        for f in files:
-            full_path = os.path.join(root, f)
-            rel_path = os.path.relpath(full_path, config.nim_model_store_path)
-            remote_obj_path = os.path.join(config.s3_model_repo_path, rel_path)
-            logger.info(f"Uploading {rel_path} to {remote_obj_path}")
-            s3_client.upload_file(full_path, config.bucket_name, remote_obj_path)
+if config.log_converted_model:
+    logger.info("Logging converted model as artifact")
+    name, _ = art.name.split(":v")
+    converted_art_name = f"{name}-converted-nim"
+    converted_art_type = f"{art.type}-converted-nim"
+    art2 = wandb.Artifact(converted_art_name, converted_art_type)
+    art2.add_dir(config.nim_model_store_path)
+    run.log_artifact(art2)
 
 
 if config.deploy_option == "local-nim":

@@ -37,8 +37,8 @@ trt_llm:
   max_queue_delay_microseconds: 10000
   model_type: "llama"
   max_batch_size: 1
-  max_input_len: 256
-  max_output_len: 256
+  max_input_len: 4096
+  max_output_len: 4096
   max_beam_width: 1
   tensor_para_size: 1
   pipeline_para_size: 1

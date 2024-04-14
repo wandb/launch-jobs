@@ -14,11 +14,26 @@ Deployment time varies by model and machine type. The base Llama2-7b config take
 
 ## User Quickstart
 
-1. Create a queue if you don't have one already.  See an example queue config below.
-   1. You can set `gpus` to the specific GPUs you want to use, or `all` to use everything.
-   2. Set `runtime` to `nvidia`
-   
+1. Create a queue if you don't have one already. See an example queue config below.
+
+   ```yaml
+   net: host
+   gpus: all # can be a specific set of GPUs or `all` to use everything
+   runtime: nvidia # also requires nvidia container runtime
+   env-file: /home/nvidia/.env
+   volume:
+     - model-store:/model-store/
+   ```
+
+   The env file needs to contain `WANDB_API_KEY`
+
+   ```bash
+   # .env
+   WANDB_API_KEY=...
+   ```
+
    ![image](https://github.com/wandb/launch-jobs/assets/15385696/d349e37a-ce1d-48b3-992f-1b4b617efa19)
+
 2. Launch an agent on your GPU machine:
    ```bash
    wandb launch-agent -e $ENTITY -p $PROJECT -q $QUEUE
@@ -33,11 +48,9 @@ Deployment time varies by model and machine type. The base Llama2-7b config take
         -c $CONFIG_JSON_FNAME
       ```
       ![image](https://github.com/wandb/launch-jobs/assets/15385696/8bc95b7a-94a6-453e-9c87-f6b25a567604)
-      
-5. You can track the deployment process in the Launch UI.
+4. You can track the deployment process in the Launch UI.
    ![image](https://github.com/wandb/launch-jobs/assets/15385696/49ca8391-689e-4cb7-9ba9-b5691f2cc7aa)
-   
-7. Once complete, you can immediately curl the endpoint to test the model. The model name is always `ensemble`.
+5. Once complete, you can immediately curl the endpoint to test the model. The model name is always `ensemble`.
    ```bash
     #!/bin/bash
     curl -X POST "http://0.0.0.0:9999/v1/completions" \

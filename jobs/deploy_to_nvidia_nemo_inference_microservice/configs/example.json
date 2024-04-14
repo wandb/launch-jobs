@@ -1,0 +1,8 @@
+{
+  "overrides": {
+    "run_config": {
+      "artifact": "megatruong/public-models/llama:v0",
+      "artifact_model_type": "llama"
+    }
+  }
+}
