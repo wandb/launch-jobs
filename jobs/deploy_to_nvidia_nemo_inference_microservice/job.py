@@ -156,9 +156,14 @@ if config.update_repo_names:
     # NOTE: Triton starts at v1, but we start at v0 so we'll be off-by-1.
     # Not sure if this is the best option...
     if config.download_artifact:
-        _, ver = art.name.split("v", 1)
-        ver = int(ver) + 1
-        ver = str(ver)
+        _, ver = art.name.split(":", 1)
+        try:
+            ver = int(ver)
+        except ValueError:
+            # ver is a string like "latest"
+            ver = "1"
+        else:
+            ver = str(ver + 1)
     else:
         ver = "1"
 
@@ -178,7 +183,8 @@ if config.update_repo_names:
 
 if config.log_converted_model:
     logger.info("Logging converted model as artifact")
-    name, _ = art.name.split(":v")
+    name, _ = art.name.split(":")
+    name = name.replace(" ", "-")
     converted_art_name = f"{name}-converted-nim"
     converted_art_type = f"{art.type}-converted-nim"
     art2 = wandb.Artifact(converted_art_name, converted_art_type)
