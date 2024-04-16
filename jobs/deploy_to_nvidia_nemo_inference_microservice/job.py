@@ -169,8 +169,6 @@ else:
                 dst_path.unlink()
             shutil.copy2(src_path, dst_path)
 
-    shutil.copytree(artifact_path, config.nim_model_store_path)
-
 
 if config.update_repo_names:
     logger.info("Updating repo to match wandb.Artifact versions...")
