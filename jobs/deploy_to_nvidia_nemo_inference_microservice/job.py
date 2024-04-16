@@ -206,11 +206,16 @@ nemo_port = config.nemo_port
 logger.info("Running inference service...")
 cmd = [
     "nemollm_inference_ms",
-    f"--{model_name=}",
-    f"--{num_gpus=}",
-    f"--{openai_port=}",
-    f"--{nemo_port=}",
-    f"--{triton_model_name=}",
+    f"--model_name={model_name}",
+    f"--num_gpus={num_gpus}",
+    f"--openai_port={openai_port}",
+    f"--nemo_port={nemo_port}",
+    f"--triton_model_name={triton_model_name}",
+    # f"--{model_name=}",
+    # f"--{num_gpus=}",
+    # f"--{openai_port=}",
+    # f"--{nemo_port=}",
+    # f"--{triton_model_name=}",
     # f"--{triton_model_repository=}",
 ]
 run_cmd(cmd, shell=False)
