@@ -6,7 +6,6 @@ FROM nvcr.io/ohlfw0olaadg/ea-participants/nemollm-inference-ms:24.01
 WORKDIR /launch
 COPY --link requirements.txt ./
 
-USER root
 RUN apt update
 RUN apt install -y python3-pip python3-setuptools
 RUN python3 -m pip install --upgrade pip setuptools wheel
@@ -18,5 +17,4 @@ COPY --link trt_llm_configs/ trt_llm_configs/
 # Example configs for different deployments
 COPY --link job.py configs/ ./
 
-USER nemo
 ENTRYPOINT ["python3", "job.py"]
