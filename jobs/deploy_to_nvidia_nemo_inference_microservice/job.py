@@ -151,7 +151,7 @@ if config.generate_model:
     logger.info(f"Generated model repos at {config.nim_model_store_path=}")
 else:
     logger.info("Copying pre-generated artifact over...")
-    shutil.copytree(artifact_path, config.trt_llm_config_overrides)
+    shutil.copytree(artifact_path, config.nim_model_store_path)
 
 
 if config.update_repo_names:
