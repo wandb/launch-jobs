@@ -151,6 +151,18 @@ if config.generate_model:
     logger.info(f"Generated model repos at {config.nim_model_store_path=}")
 else:
     logger.info("Copying pre-generated artifact over...")
+    src = Path(artifact_path)
+    dst = Path(config.nim_model_store_path)
+
+    dst.mkdir(parents=True, exist_ok=True)
+    for src_path in src.iterdir():
+        dst_path = dst / src_path.name
+
+        if src_path.is_dir():
+            shutil.copytree(src_path, dst_path)
+        else:
+            shutil.copy2(src_path, dst_path)
+
     shutil.copytree(artifact_path, config.nim_model_store_path)
 
 
