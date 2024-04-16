@@ -6,9 +6,12 @@ FROM nvcr.io/ohlfw0olaadg/ea-participants/nemollm-inference-ms:24.01
 WORKDIR /launch
 COPY --link requirements.txt ./
 
-# RUN apt update
-# RUN apt install -y python3-pip python3-setuptools
-# RUN python3 -m pip install --upgrade pip setuptools wheel
+USER root
+RUN apt update
+RUN apt install -y python3-pip python3-setuptools
+RUN python3 -m pip install --upgrade pip setuptools wheel
+
+USER nemo
 RUN pip3 install -r requirements.txt
 
 # Where the llama configs live
