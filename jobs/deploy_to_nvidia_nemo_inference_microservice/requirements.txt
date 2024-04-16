@@ -1,5 +1,5 @@
 boto3
-git+https://github.com/wandb/wandb.git@andrew/stop-run
+wandb
 tritonclient[http]
 pydantic
 rich
