@@ -1,6 +1,5 @@
 {
   "overrides": {
-    "args": ["--cap-add", "SYS_SETGID"],
     "run_config": {
       "artifact": "vanpelt/support-llama/merged:v0",
       "artifact_model_type": "llama"
