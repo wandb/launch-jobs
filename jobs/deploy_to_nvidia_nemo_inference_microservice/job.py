@@ -78,9 +78,9 @@ class Config(BaseModel):
 
     download_artifact: bool = True
     generate_model: bool = True
-    update_repo_names: Literal[
-        False
-    ] = False  # TODO: Add this option back when Nvidia officially supports alt repos
+    update_repo_names: bool = (
+        False  # TODO: Add this option back when Nvidia officially supports alt repos
+    )
     log_converted_model: bool = True
 
     # If specified, overrides the keys provided in the default config at trt_llm_configs/{template.yaml}
