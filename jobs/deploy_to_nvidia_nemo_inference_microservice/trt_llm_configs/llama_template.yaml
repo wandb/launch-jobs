@@ -2,7 +2,7 @@ model_repo_path: "/model-store/"
 use_ensemble: false
 model_type: "LLAMA"
 backend: "trt_llm"
-base_model_id: "ensemble"
+base_model_id: ensemble
 prompt_timer: 60
 gateway_ip: "gateway-api"
 server_port_internal: 9009
@@ -25,7 +25,7 @@ preprocessor:
     rstrip_turn: true
     turn_suffix: "\n"
 pipeline:
-  model_name: "ensemble"
+  model_name: ensemble
   num_instances: 1
 trt_llm:
   use: true
