@@ -213,6 +213,6 @@ cmd = [
     f"--{triton_model_name=}",
     # f"--{triton_model_repository=}",
 ]
-run_cmd(cmd, shell=True)
+run_cmd(cmd, shell=False)
 
 run.finish()
