@@ -200,7 +200,7 @@ if config.update_repo_names:
             src_dir = path / "1"
             shutil.copytree(src_dir, new_path)
 
-if not config.generate_model and config.log_converted_model:
+if config.generate_model and config.log_converted_model:
     logger.info("Logging converted model as artifact")
     name, _ = art.name.split(":")
     name = name.replace(" ", "-")
