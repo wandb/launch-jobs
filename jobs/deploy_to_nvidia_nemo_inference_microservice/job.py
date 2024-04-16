@@ -149,6 +149,9 @@ if config.generate_model:
     ]
     run_cmd(cmd, shell=False)
     logger.info(f"Generated model repos at {config.nim_model_store_path=}")
+else:
+    logger.info("Copying pre-generated artifact over...")
+    shutil.copytree(artifact_path, config.trt_llm_config_overrides)
 
 
 if config.update_repo_names:
@@ -181,7 +184,7 @@ if config.update_repo_names:
             src_dir = path / "1"
             shutil.copytree(src_dir, new_path)
 
-if config.log_converted_model:
+if not config.generate_model and config.log_converted_model:
     logger.info("Logging converted model as artifact")
     name, _ = art.name.split(":")
     name = name.replace(" ", "-")
