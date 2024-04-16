@@ -113,14 +113,16 @@ if config.trt_llm_config_overrides:
     trt_config = recursive_merge_overrides(trt_config, config.trt_llm_config_overrides)
 
 
+art = run.use_artifact(config.artifact)
 if config.download_artifact:
     logger.info("Downloading model artifact...")
     try:
-        art = run.use_artifact(config.artifact)
         artifact_path = art.download()
     except Exception as e:
         logger.error(f"Error downloading artifact, exiting.  {e=}")
         sys.exit(1)
+else:
+    artifact_path = f"artifacts/{art.name}"
 
 
 if config.update_repo_names:
@@ -159,8 +161,12 @@ else:
         dst_path = dst / src_path.name
 
         if src_path.is_dir():
+            if dst_path.exists() and dst_path.is_dir():
+                shutil.rmtree(dst_path)
             shutil.copytree(src_path, dst_path)
         else:
+            if dst_path.exists():
+                dst_path.unlink()
             shutil.copy2(src_path, dst_path)
 
     shutil.copytree(artifact_path, config.nim_model_store_path)
