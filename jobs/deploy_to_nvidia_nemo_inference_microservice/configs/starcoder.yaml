@@ -1,5 +1,4 @@
 run_name: Deploy StarCoder Model
 config:
-  artifact: "wandb-artifact://megatruong/public-models/starcoder:v0"
+  artifact: "megatruong/public-models/starcoder:v0"
   artifact_model_type: "starcoder"
-  bucket_name: "andrew-nemo-bucket"

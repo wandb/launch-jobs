@@ -1,16 +1,15 @@
 import logging
-import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Literal, Optional
 
-import boto3
-import wandb
 import yaml
 from pydantic import BaseModel
 from rich.logging import RichHandler
+
+import wandb
 
 logging.basicConfig(
     level="INFO",
@@ -30,6 +29,18 @@ model_config_mapping = {
     "llama": "llama_template.yaml",
     "starcoder": "starcoder_template.yaml",
 }
+
+
+def recursive_merge_overrides(base: dict, overrides: dict) -> dict:
+    for k, v in overrides.items():
+        if k in base:
+            if isinstance(base_v := base[k], dict) and isinstance(v, dict):
+                recursive_merge_overrides(base_v, v)
+            elif base_v != v:
+                base[k] = v
+        else:
+            base[k] = v
+    return base
 
 
 def run_cmd(cmd: list[str], error_msg: Optional[str] = None, shell: bool = False):
@@ -56,10 +67,7 @@ class Config(BaseModel):
     artifact: str
     artifact_model_type: Literal["llama", "starcoder"]
 
-    bucket_name: str
     nim_model_store_path: str = "/model-store/"
-    s3_model_repo_path: str = "models"
-
     openai_port: int = 9999
     nemo_port: int = 9998
 
@@ -70,10 +78,13 @@ class Config(BaseModel):
 
     download_artifact: bool = True
     generate_model: bool = True
-    update_repo_names: Literal[
-        False
-    ] = False  # TODO: Add this option back when Nvidia officially supports alt repos
-    push_to_s3: bool = False
+    update_repo_names: bool = (
+        False  # TODO: Add this option back when Nvidia officially supports alt repos
+    )
+    log_converted_model: bool = True
+
+    # If specified, overrides the keys provided in the default config at trt_llm_configs/{template.yaml}
+    trt_llm_config_overrides: Optional[dict] = None
 
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
@@ -98,15 +109,20 @@ base_trt_config_path = f"./trt_llm_configs/{base_trt_config_fname}"
 with open(base_trt_config_path) as f:
     trt_config = yaml.safe_load(f)
 
+if config.trt_llm_config_overrides:
+    trt_config = recursive_merge_overrides(trt_config, config.trt_llm_config_overrides)
 
+
+art = run.use_artifact(config.artifact)
 if config.download_artifact:
     logger.info("Downloading model artifact...")
     try:
-        art = run.use_artifact(config.artifact)
         artifact_path = art.download()
     except Exception as e:
         logger.error(f"Error downloading artifact, exiting.  {e=}")
         sys.exit(1)
+else:
+    artifact_path = f"artifacts/{art.name}"
 
 
 if config.update_repo_names:
@@ -135,6 +151,23 @@ if config.generate_model:
     ]
     run_cmd(cmd, shell=False)
     logger.info(f"Generated model repos at {config.nim_model_store_path=}")
+else:
+    logger.info("Copying pre-generated artifact over...")
+    src = Path(artifact_path)
+    dst = Path(config.nim_model_store_path)
+
+    dst.mkdir(parents=True, exist_ok=True)
+    for src_path in src.iterdir():
+        dst_path = dst / src_path.name
+
+        if src_path.is_dir():
+            if dst_path.exists() and dst_path.is_dir():
+                shutil.rmtree(dst_path)
+            shutil.copytree(src_path, dst_path)
+        else:
+            if dst_path.exists():
+                dst_path.unlink()
+            shutil.copy2(src_path, dst_path)
 
 
 if config.update_repo_names:
@@ -142,9 +175,14 @@ if config.update_repo_names:
     # NOTE: Triton starts at v1, but we start at v0 so we'll be off-by-1.
     # Not sure if this is the best option...
     if config.download_artifact:
-        _, ver = art.name.split("v", 1)
-        ver = int(ver) + 1
-        ver = str(ver)
+        _, ver = art.name.split(":", 1)
+        try:
+            ver = int(ver)
+        except ValueError:
+            # ver is a string like "latest"
+            ver = "1"
+        else:
+            ver = str(ver + 1)
     else:
         ver = "1"
 
@@ -162,17 +200,15 @@ if config.update_repo_names:
             src_dir = path / "1"
             shutil.copytree(src_dir, new_path)
 
-# Optional: Push to S3 (in future release, we can load models from here)
-if config.push_to_s3:
-    logger.info(f"Pushing models to S3 {config.bucket_name=}")
-    s3_client = boto3.client("s3")
-    for root, _, files in os.walk(config.nim_model_store_path):
-        for f in files:
-            full_path = os.path.join(root, f)
-            rel_path = os.path.relpath(full_path, config.nim_model_store_path)
-            remote_obj_path = os.path.join(config.s3_model_repo_path, rel_path)
-            logger.info(f"Uploading {rel_path} to {remote_obj_path}")
-            s3_client.upload_file(full_path, config.bucket_name, remote_obj_path)
+if config.generate_model and config.log_converted_model:
+    logger.info("Logging converted model as artifact")
+    name, _ = art.name.split(":")
+    name = name.replace(" ", "-")
+    converted_art_name = f"{name}-converted-nim"
+    converted_art_type = f"{art.type}-converted-nim"
+    art2 = wandb.Artifact(converted_art_name, converted_art_type)
+    art2.add_dir(config.nim_model_store_path)
+    run.log_artifact(art2)
 
 
 if config.deploy_option == "local-nim":
@@ -189,13 +225,13 @@ nemo_port = config.nemo_port
 logger.info("Running inference service...")
 cmd = [
     "nemollm_inference_ms",
-    f"--{model_name=}",
-    f"--{num_gpus=}",
-    f"--{openai_port=}",
-    f"--{nemo_port=}",
-    f"--{triton_model_name=}",
+    f"--model_name={model_name}",
+    f"--num_gpus={num_gpus}",
+    f"--openai_port={openai_port}",
+    f"--nemo_port={nemo_port}",
+    f"--triton_model_name={triton_model_name}",
     # f"--{triton_model_repository=}",
 ]
-run_cmd(cmd, shell=True)
+run_cmd(cmd, shell=False)
 
 run.finish()

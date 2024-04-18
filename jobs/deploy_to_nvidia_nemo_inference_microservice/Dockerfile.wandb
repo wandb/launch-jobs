@@ -10,6 +10,8 @@ USER root
 RUN apt update
 RUN apt install -y python3-pip python3-setuptools
 RUN python3 -m pip install --upgrade pip setuptools wheel
+
+USER nemo
 RUN pip3 install -r requirements.txt
 
 # Where the llama configs live
@@ -18,5 +20,4 @@ COPY --link trt_llm_configs/ trt_llm_configs/
 # Example configs for different deployments
 COPY --link job.py configs/ ./
 
-USER nemo
 ENTRYPOINT ["python3", "job.py"]

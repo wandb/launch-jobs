@@ -1,0 +1,8 @@
+{
+  "overrides": {
+    "run_config": {
+      "artifact": "vanpelt/support-llama/merged:v0",
+      "artifact_model_type": "llama"
+    }
+  }
+}
