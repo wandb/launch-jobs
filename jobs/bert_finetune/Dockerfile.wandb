@@ -1,0 +1,9 @@
+FROM pytorch/pytorch:2.3.0-cuda11.8-cudnn8-runtime
+
+COPY job.py requirements.txt trainer_args.yaml /src/
+
+RUN pip install -r /src/requirements.txt
+
+WORKDIR /src
+
+ENTRYPOINT ["python", "job.py"]

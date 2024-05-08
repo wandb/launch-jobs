@@ -1,0 +1,11 @@
+output_dir: "output"
+evaluation_strategy: epoch
+learning_rate: 0.00005
+weight_decay: 0
+adam_beta1: 0.9
+adam_beta2: 0.999
+adam_epsilon: 0.00000001
+max_grad_norm: 1
+num_train_epochs: 3
+logging_steps: 25
+report_to: "wandb"
