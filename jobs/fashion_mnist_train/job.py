@@ -13,7 +13,7 @@ from tensorflow.keras.layers import Conv2D, Dense, Flatten, MaxPooling2D
 from tensorflow.keras.models import Sequential
 # Adam legacy for m1/m2 macs
 from tensorflow.keras.optimizers.legacy import Adam
-from wandb.keras import WandbMetricsLogger
+from wandb.integration.keras import WandbMetricsLogger
 
 
 def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
