@@ -1,0 +1,7 @@
+FROM pytorch/pytorch:2.3.1-cuda12.1-cudnn8-runtime
+
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt && rm /tmp/requirements.txt
+
+WORKDIR /wandb
+COPY *.py /wandb/
