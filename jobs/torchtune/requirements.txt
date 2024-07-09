@@ -1,0 +1,4 @@
+torch==2.3.1
+torchao==0.1
+torchtune==0.1.1
+wandb
