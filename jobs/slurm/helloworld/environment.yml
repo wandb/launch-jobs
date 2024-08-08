@@ -1,0 +1,9 @@
+name: helloworld
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+    - wandb
+    - weave
