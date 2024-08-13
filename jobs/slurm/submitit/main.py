@@ -9,7 +9,7 @@ def slow_multiplication(x, y):
 
 async def main():
     executor = submitit.AutoExecutor(folder="logs")
-    executor.update_parameters(timeout_min=1, slurm_partition="dev")
+    executor.update_parameters(timeout_min=1)
 
     # await a single result
     job = executor.submit(slow_multiplication, 10, 2)
