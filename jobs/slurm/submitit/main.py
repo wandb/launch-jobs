@@ -13,12 +13,13 @@ def slow_multiplication(x, y):
 async def main():
     print(f"Running in conda env: {os.getenv("CONDA_DEFAULT_ENV")}")
     print(f"From directory: {os.getcwd()}")
+
     executor = submitit.AutoExecutor(folder="logs")
     wandb.init(project="submitit-test", config={
         "submitit": {"timeout_min": None, "partition": None}
     })
     launch.manage_wandb_config(include="submitit")
-    # executor.update_parameters(timeout_min=1)
+    executor.update_parameters(timeout_min=1)
 
     # await a single result
     job = executor.submit(slow_multiplication, 10, 2)
