@@ -1,4 +1,5 @@
 import asyncio
+import os
 import random
 import submitit
 import time
@@ -8,8 +9,9 @@ def slow_multiplication(x, y):
     return x*y
 
 async def main():
+    print(f"Running in {os.getenv("CONDA_DEFAULT_ENV")}")
     executor = submitit.AutoExecutor(folder="logs")
-    executor.update_parameters(timeout_min=1)
+    # executor.update_parameters(timeout_min=1)
 
     # await a single result
     job = executor.submit(slow_multiplication, 10, 2)
