@@ -3,6 +3,8 @@ import os
 import random
 import submitit
 import time
+import wandb
+from wandb.sdk import launch
 
 def slow_multiplication(x, y):
     time.sleep(x*y)
@@ -11,6 +13,10 @@ def slow_multiplication(x, y):
 async def main():
     print(f"Running in {os.getenv("CONDA_DEFAULT_ENV")}")
     executor = submitit.AutoExecutor(folder="logs")
+    wandb.init(project="submitit-test", config={
+        "submitit": {"timeout_min": None, "partition": None}
+    })
+    launch.manage_wandb_config(include="submitit")
     # executor.update_parameters(timeout_min=1)
 
     # await a single result
