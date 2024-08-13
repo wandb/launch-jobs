@@ -4,5 +4,5 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 
-CMD="python submitit.py"
+CMD="python main.py"
 srun --jobid $SLURM_JOBID bash -c "$CMD"
