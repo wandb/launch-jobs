@@ -11,7 +11,8 @@ def slow_multiplication(x, y):
     return x*y
 
 async def main():
-    print(f"Running in {os.getenv("CONDA_DEFAULT_ENV")}")
+    print(f"Running in conda env: {os.getenv("CONDA_DEFAULT_ENV")}")
+    print(f"From directory: {os.getcwd()}")
     executor = submitit.AutoExecutor(folder="logs")
     wandb.init(project="submitit-test", config={
         "submitit": {"timeout_min": None, "partition": None}
