@@ -27,7 +27,9 @@ args = [
     "--max-num-batched-tokens",
     "1024",
     "--chat-template",
-    "chat_template.jinja"
+    "chat_template.jinja",
+    "--served-model-name",
+    model_name,
 ]
 
 print(f"Starting VLLM server with args: {args}")
