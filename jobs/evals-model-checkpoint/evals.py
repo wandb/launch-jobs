@@ -140,11 +140,6 @@ aime2025_evaluation = Evaluation(
 job_input_schema = {
     "type": "object",
     "properties": {
-        # "base_url": {
-        #     "type": "string",
-        #     "description": "Base URL of the API",
-        #     # "default": "https://api.openai.com/v1",
-        # },
         "model": {
             "type": "string",
             "description": "Model to use",
@@ -155,10 +150,6 @@ job_input_schema = {
             "description": 'Add "Provide step by step reasoning before answering." to the system prompt',
             # "default": True,
         },
-        # "api_key": {
-        #     "type": "string",
-        #     "description": "API key to use",
-        # },
         "artifact_path": {
             "type": "string",
             "description": "Path to the artifact to serve",
@@ -192,65 +183,18 @@ with wandb.init(
         schema=job_input_schema,
     )
 
-    # TODO: what is the right way to set defaults?
-    # base_url = run.config.get("base_url", "https://api.openai.com/v1")
-    # model_name = run.config.get("model", "gpt-4.1-nano-2025-04-14")
     model_name = run.config.get("model", "facebook/opt-125m")
     step_by_step = run.config.get("step_by_step", False)
-    # api_key = run.config.get("api_key")
     artifact_path = run.config.get("artifact_path")
     vllm_process = None  # Initialize to None
 
-    # if artifact_path:
-        # artifact = run.use_artifact(artifact_path)
-        # artifact_dir = artifact.download()
-
-        # # Get model name as last directory component before version tag
-        # model_name = os.path.basename(artifact_path).split(":", 1)[0]
-
-        # # Start vllm server in background with output capture
-        # vllm_process = subprocess.Popen(
-        #     [
-        #         "vllm",
-        #         "serve",
-        #         artifact_dir,
-        #         "--api-key",
-        #         "token-abc123",
-        #         "--served-model-name",
-        #         model_name,
-        #     ],
-        #     stdout=subprocess.PIPE,
-        #     stderr=subprocess.PIPE,
-        #     text=True,
-        #     bufsize=1,
-        #     universal_newlines=True,
-        # )
-
-        # # Start threads to capture and log output
-        # def log_output(pipe, prefix):
-        #     for line in pipe:
-        #         print(f"{prefix}: {line.strip()}")
-
-        # import threading
-
-        # stdout_thread = threading.Thread(
-        #     target=log_output, args=(vllm_process.stdout, "vllm stdout")
-        # )
-        # stderr_thread = threading.Thread(
-        #     target=log_output, args=(vllm_process.stderr, "vllm stderr")
-        # )
-        # stdout_thread.daemon = True
-        # stderr_thread.daemon = True
-        # stdout_thread.start()
-        # stderr_thread.start()
-
-        # Wait for server to start
     print("Waiting for VLLM server to start...")
     start_time = time.time()
     timeout = 480  # 4 minutes timeout
     api_key = "token-abc123"  # Same key used to start the server
     service_name = make_name_dns_safe(f"mistral-7b-{run.entity}-{run.project}-{run.id}")
     url = f"http://{service_name}:8000"
+    # url = "http://mistral-7b:8000"
     while time.time() - start_time < timeout:
         print("Checking health...")
         try:
@@ -305,26 +249,17 @@ with wandb.init(
     )
     mmlu_results_prefixed = prefix_dict_keys(mmlu_results, "mmlu")
 
-    # aime2025_results = asyncio.run(
-    #     aime2025_evaluation.evaluate(
-    #         model, __weave={"display_name": f"aime2025-{model.name}"}
-    #     )
-    # )
-    # aime2025_results_prefixed = prefix_dict_keys(aime2025_results, "aime2025")
+    aime2025_results = asyncio.run(
+        aime2025_evaluation.evaluate(
+            model, __weave={"display_name": f"aime2025-{model.name}"}
+        )
+    )
+    aime2025_results_prefixed = prefix_dict_keys(aime2025_results, "aime2025")
 
     # Combine results and log in a single call
-    # combined_results = {**mmlu_results_prefixed, **aime2025_results_prefixed}
-    combined_results = {**mmlu_results_prefixed}
+    combined_results = {**mmlu_results_prefixed, **aime2025_results_prefixed}
     run.log(combined_results)
-    # finally:
-    #     # Clean up vllm server if it was started
-    #     if artifact_path is not None:
-    #         print("Shutting down vllm server...")
-    #         vllm_process.terminate()
-    #         vllm_process.wait(timeout=10)  # Wait up to 10 seconds for graceful shutdown
-    #         if vllm_process.poll() is None:  # If still running after timeout
-    #             vllm_process.kill()  # Force kill
-    #         print("vllm server shut down")
+
 
     spec = leaderboard.Leaderboard(
         name="leaders",
@@ -335,11 +270,11 @@ with wandb.init(
                 scorer_name="exact_match",
                 summary_metric_path="true_fraction",
             ),
-            # leaderboard.LeaderboardColumn(
-            #     evaluation_object_ref=get_ref(aime2025_evaluation).uri(),
-            #     scorer_name="exact_match",
-            #     summary_metric_path="true_fraction",
-            # ),
+            leaderboard.LeaderboardColumn(
+                evaluation_object_ref=get_ref(aime2025_evaluation).uri(),
+                scorer_name="exact_match",
+                summary_metric_path="true_fraction",
+            ),
         ],
     )
 
