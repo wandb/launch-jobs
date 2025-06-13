@@ -13,6 +13,7 @@ from weave.trace.ref_util import get_ref
 import time
 import requests
 from requests.exceptions import RequestException
+import re
 
 
 class Answer(BaseModel):
@@ -170,6 +171,13 @@ def prefix_dict_keys(d: dict, prefix: str) -> dict:
     """Prefix all keys in a dictionary with prefix + '/' + original key."""
     return {f"{prefix}/{k}": v for k, v in d.items()}
 
+def make_name_dns_safe(name: str) -> str:
+    resp = name.replace("_", "-").lower()
+    resp = re.sub(r"[^a-z\.\-]", "", resp)
+    # Actual length limit is 253, but we want to leave room for the generated suffix
+    resp = resp[:200]
+    return resp
+
 
 with wandb.init(
     settings=wandb.Settings(
@@ -239,9 +247,10 @@ with wandb.init(
         # Wait for server to start
     print("Waiting for VLLM server to start...")
     start_time = time.time()
-    timeout = 240  # 4 minutes timeout
+    timeout = 480  # 4 minutes timeout
     api_key = "token-abc123"  # Same key used to start the server
-    url = "http://mistral-7b:8000"
+    service_name = make_name_dns_safe(f"mistral-7b-{run.entity}-{run.project}-{run.id}")
+    url = f"http://{service_name}:8000"
     while time.time() - start_time < timeout:
         print("Checking health...")
         try:
