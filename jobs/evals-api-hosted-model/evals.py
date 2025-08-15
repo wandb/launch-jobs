@@ -14,6 +14,8 @@ import time
 import requests
 from requests.exceptions import RequestException
 
+SECRET_REF_PREFIX = "secret://"
+
 
 class Answer(BaseModel):
     answer: str
@@ -154,6 +156,7 @@ job_input_schema = {
         "api_key": {
             "type": "string",
             "description": "API key to use",
+            "format": "secret",
         },
     },
 }
@@ -178,7 +181,9 @@ with wandb.init(
     base_url = run.config.get("base_url", "https://api.openai.com/v1")
     model_name = run.config.get("model", "gpt-4.1-nano-2025-04-14")
     step_by_step = run.config.get("step_by_step", False)
-    api_key = run.config.get("api_key")
+    api_key_secret_ref = run.config.get("api_key")
+    env_key = api_key_secret_ref.replace(SECRET_REF_PREFIX, "").upper()
+    api_key = os.getenv(env_key)
 
 
     if api_key is None:
