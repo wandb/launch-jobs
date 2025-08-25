@@ -152,6 +152,7 @@ job_input_schema = {
         },
         "artifact_path": {
             "type": "string",
+            "format": "artifact_path",
             "description": "Path to the artifact to serve",
         },
     },
