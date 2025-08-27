@@ -5,6 +5,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: chartboost/ruff-action@v1
+      - uses: astral-sh/ruff-action@v3
         with:
-          args: --fix --exit-non-zero-on-fix --show-fixes --ignore E501
+          args: "check --fix --exit-non-zero-on-fix --show-fixes --ignore E501"
