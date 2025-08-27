@@ -1,0 +1,48 @@
+import logging
+
+import wandb
+import weave
+from inspect_ai import eval_set
+from inspect_ai._eval.loader import load_tasks
+from inspect_ai._eval.task import task_with
+from inspect_ai.model import get_model
+from wandb.sdk import launch
+
+from leaderboard import create_leaderboard
+
+logger = logging.getLogger(__name__)
+
+
+def main():
+    with wandb.init(config=launch.load_wandb_config()) as run:
+        weave_client = weave.init(run.project)
+        model = get_model(
+            run.config["model"]["model_name"],
+            base_url=run.config["model"].get("base_url"),
+            api_key=run.config["model"].get("api_key_var"),
+        )
+        tasks = [
+            task_with(load_tasks([task])[0], model=model)
+            for task in run.config["tasks"]
+        ]
+
+        success, logs = eval_set(
+            tasks=tasks,
+            log_dir="logs/",
+            limit=run.config.get("limit", 5),
+        )
+
+        if run.config.get("create_leaderboard", True):
+            logger.info("Creating leaderboard...")
+            if not success:
+                logger.warning(
+                    "Evaluation set did not run successfully. Leaderboard may be incomplete."
+                )
+            else:
+                logger.info("Evaluation set ran successfully. Creating leaderboard.")
+                create_leaderboard(weave_client)
+        weave_client.finish()
+
+
+if __name__ == "__main__":
+    main()
