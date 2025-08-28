@@ -9,6 +9,7 @@ from weave.trace.ref_util import get_ref
 
 logger = logging.getLogger(__name__)
 
+LEADERBOARD_REF = "Inspect-AI-Leaderboard"
 LEADERBOARD_NAME = "Inspect AI Leaderboard"
 LEADERBOARD_DESCRIPTION = (
     "Leaderboard comparing model performance on the various tasks.\n\n"
@@ -28,22 +29,16 @@ def build_columns_from_eval_logger(eval_logger: EvaluationLogger) -> list[leader
             if "err" in m_value:
                 continue
             
-            try:
-                lb_columns.append(
-                        leaderboard.LeaderboardColumn(
-                            evaluation_object_ref=get_ref(
-                                eval_logger._pseudo_evaluation
-                            ).uri(),
-                            scorer_name="output",
-                            summary_metric_path=f"{metric_name}.{m_value}",
-                            should_minimize=False,
-                        )
-                    )
-            except Exception as e:
-                logger.debug(
-                    f"Could not create column for {metric_name}: {e}"
+            lb_columns.append(
+                leaderboard.LeaderboardColumn(
+                    evaluation_object_ref=get_ref(
+                        eval_logger._pseudo_evaluation
+                    ).uri(),
+                    scorer_name="output",
+                    summary_metric_path=f"{metric_name}.{m_value}",
+                    should_minimize=False,
                 )
-                continue
+            )
 
     return lb_columns
 
@@ -63,16 +58,35 @@ def create_leaderboard(
     assert weave.get_client() is not None, "Weave client not initialized"
        
     try:
-        leaderboard_columns = []
+        # Build new columns from the active evaluation loggers in this run
+        new_columns: list[leaderboard.LeaderboardColumn] = []
         for eval_logger in _active_evaluation_loggers:
-            leaderboard_columns.extend(build_columns_from_eval_logger(eval_logger))
+            new_columns.extend(build_columns_from_eval_logger(eval_logger))
+
+        # Pull any existing leaderboard (latest version) and merge columns
+        existing_columns: list[leaderboard.LeaderboardColumn] = []
+        try:
+            existing = weave.ref(LEADERBOARD_REF).get()
+            cols = getattr(existing, "columns", None)
+            if cols:
+                existing_columns = list(cols)
+        except Exception:
+            # No existing leaderboard with this name, or not retrievable – start fresh
+            existing_columns = []
+
+        merged_columns = list(
+            {
+                (column.evaluation_object_ref, column.scorer_name, column.summary_metric_path, column.should_minimize): column
+                for column in (existing_columns or []) + new_columns
+            }.values()
+        )
 
         spec = leaderboard.Leaderboard(
             name=name,
             description=description,
-            columns=leaderboard_columns,
+            columns=merged_columns,
         )
-        ref = weave.publish(spec)
+        ref = weave.publish(spec, name=name)
         url = weave_urls.leaderboard_path(
             ref.entity,
             ref.project,
