@@ -1,4 +1,4 @@
-# Arrowhead
+# Inspect AI Evals
 
 TODO: This should be launching public job instructions.
 
