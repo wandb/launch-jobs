@@ -58,7 +58,7 @@ def generate_schema():
                         "type": "string",
                         "title": "API Key",
                         "description": "API key for model access",
-                        # "format": "secret",
+                        "format": "secret",
                     },
                 },
             },
