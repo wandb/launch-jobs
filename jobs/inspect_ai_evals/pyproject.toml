@@ -1,7 +1,7 @@
 [project]
-name = "arrowhead"
+name = "inspect-ai-evals-wandb-job"
 version = "0.1.0"
-description = "Run a suite of off-the-shelf benchmarks and Leaderboards against an LLM APIS"
+description = "Run a suite of off-the-shelf Inspect AI benchmarks against an LLM API and log the results to Weave"
 readme = "README.md"
 authors = [
     { name = "Bharat Ramanathan", email = "bharat.ramanathan@wandb.com" }

@@ -1,4 +1,5 @@
 import logging
+import os
 
 import wandb
 import weave
@@ -16,10 +17,21 @@ logger = logging.getLogger(__name__)
 def main():
     with wandb.init(config=launch.load_wandb_config()) as run:
         weave_client = weave.init(run.project)
+
+        hf_token = run.config.get("hf_token")
+        if hf_token:
+            os.environ.setdefault("HUGGINGFACE_HUB_TOKEN", hf_token)
+            os.environ.setdefault("HF_TOKEN", hf_token)
+            os.environ.setdefault("HUGGINGFACE_TOKEN", hf_token)
+
+        api_key = run.config["model"].get("api_key_var")
+        if api_key:
+            os.environ.setdefault("OPENAI_API_KEY", api_key)
+
         model = get_model(
             run.config["model"]["model_name"],
             base_url=run.config["model"].get("base_url"),
-            api_key=run.config["model"].get("api_key_var"),
+            api_key=api_key,
         )
         tasks = [
             task_with(load_tasks([task])[0], model=model)
@@ -40,7 +52,7 @@ def main():
                 )
             else:
                 logger.info("Evaluation set ran successfully. Creating leaderboard.")
-                create_leaderboard(weave_client)
+                create_leaderboard()
         weave_client.finish()
 
 

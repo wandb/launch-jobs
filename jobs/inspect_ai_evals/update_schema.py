@@ -33,6 +33,13 @@ def generate_schema():
                     "enum": tasks,
                 },
             },
+            "hf_token": {
+                "type": "string",
+                "title": "Hugging Face Token",
+                "description": (
+                    "Personal access token used to read gated datasets from Hugging Face."
+                ),
+            },
             "limit": {
                 "type": "integer",
                 "title": "Limit",
