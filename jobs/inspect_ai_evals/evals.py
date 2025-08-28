@@ -2,7 +2,6 @@ import os
 
 import wandb
 import weave
-from weave.trace.context.weave_client_context import set_weave_client_global
 from inspect_ai import eval_set
 from inspect_ai._eval.loader import load_tasks
 from inspect_ai._eval.task import task_with
