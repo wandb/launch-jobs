@@ -15,6 +15,7 @@ if not model_name and not artifact_path:
 wandb_api = wandb.Api()
 
 model = wandb_api.artifact(artifact_path).download() if artifact_path else model_name
+model_name = "user-model" if artifact_path else model_name
 
 args = [
     "vllm",
