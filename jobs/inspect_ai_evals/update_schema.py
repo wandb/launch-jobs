@@ -73,6 +73,7 @@ def generate_schema():
                 "description": (
                     "(Optional) Personal access token used to read gated datasets from Hugging Face."
                 ),
+                "format": "secret",
             },
         },
     }

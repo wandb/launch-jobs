@@ -3,6 +3,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class UnsuccessfulEvaluation(Exception):
+    pass
+
 def handle_exception(e: Exception) -> None:
     if isinstance(e, DatasetNotFoundError):
         print("Dataset not found:")
@@ -10,6 +13,13 @@ def handle_exception(e: Exception) -> None:
         print(f"Full exception:\n{e}")
         print("--------------------------------")
         logger.error(f"Dataset not found: {e}", exc_info=True)
+        raise e
+    
+    if isinstance(e, UnsuccessfulEvaluation):
+        print("Evaluation set did not run successfully:")
+        print(f"Full exception:\n{e}")
+        print("--------------------------------")
+        logger.error(f"Evaluation set did not run successfully: {e}", exc_info=True)
         raise e
     
     raise e
