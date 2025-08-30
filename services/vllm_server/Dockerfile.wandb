@@ -2,9 +2,8 @@ FROM vllm/vllm-openai:latest
 
 WORKDIR /launch
 
-COPY --link job.py ./
-COPY --link chat_template.jinja ./
+COPY --link server.py ./
 
 RUN pip install wandb
 
-ENTRYPOINT ["python3", "job.py"]
+ENTRYPOINT ["python3", "server.py"]
