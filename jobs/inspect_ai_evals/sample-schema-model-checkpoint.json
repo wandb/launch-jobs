@@ -138,7 +138,8 @@
     "artifact_path": {
       "type": "string",
       "title": "Artifact Path",
-      "description": "Path to the model artifact to use for the evaluation job"
+      "description": "Path to the model artifact to use for the evaluation job",
+      "format": "artifact_path"
     },
     "create_leaderboard": {
       "type": "boolean",
