@@ -23,17 +23,13 @@ args = [
     model,
     "--api-key",
     "token-abc123",
-    "--trust-remote-code",
-    "--enable-chunked-prefill",
-    "--max-num-batched-tokens",
-    "1024",
-    "--chat-template",
-    "chat_template.jinja",
     "--served-model-name",
     model_name,
+    "--host",
+    "0.0.0.0",
+    "--port",
+    "8000",
 ]
-
-print(f"Starting VLLM server with args: {args}")
 
 vllm_server = subprocess.Popen(
     args,
@@ -44,7 +40,6 @@ vllm_server = subprocess.Popen(
     universal_newlines=True,
 )
 
-# Start threads to capture and log output
 def log_output(pipe, prefix):
     for line in pipe:
         print(f"{prefix}: {line.strip()}")
@@ -60,11 +55,8 @@ stderr_thread.daemon = True
 stdout_thread.start()
 stderr_thread.start()
 
-print("VLLM server starting ...")
-
 try:
     vllm_server.wait()
 except KeyboardInterrupt:
-    print("Received interrupt signal, shutting down...")
     vllm_server.terminate()
     vllm_server.wait()
