@@ -27,7 +27,7 @@ def generate_schema():
             "tasks": {
                 "type": "array",
                 "title": "Tasks",
-                "description": "Select the tasks to run. For more information on the tasks, see the https://inspect.aisi.org.uk/evals/.",
+                "description": "Select the tasks to run. For more information on the tasks, see the docs at: https://inspect.aisi.org.uk/evals/.",
                 "items": {
                     "type": "string",
                     "enum": tasks,
@@ -36,7 +36,7 @@ def generate_schema():
             "limit": {
                 "type": "integer",
                 "title": "Sample Limit",
-                "description": "Maximum number of samples to evaluate for each task",
+                "description": "Maximum number of samples to evaluate for each task (e.g. 5, 10, 25, 50)",
             },
             "model": {
                 "type": "object",
@@ -52,7 +52,7 @@ def generate_schema():
                     "base_url": {
                         "type": "string",
                         "title": "Base URL",
-                        "description": "Base URL for the model API",
+                        "description": "Base URL for the model API (e.g. https://api.openai.com/v1)",
                     },
                     "api_key_var": {
                         "type": "string",
