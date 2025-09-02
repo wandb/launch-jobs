@@ -133,7 +133,7 @@
     "limit": {
       "type": "integer",
       "title": "Sample Limit",
-      "description": "Maximum number of samples to evaluate for each task (e.g. 5, 10, 25, 50)",
+      "description": "Maximum number of samples to evaluate for each task (e.g. 5, 10, 25, 50)"
     },
     "artifact_path": {
       "type": "string",
