@@ -49,9 +49,9 @@ def main():
         server_base = wait_for_vllm(run)
         print(f"VLLM server started at {server_base}")
 
-        openai_api_key = get_launch_secret_from_env("openai_api_key", run.config)
-        os.environ.setdefault("OPENAI_API_KEY", openai_api_key or VLLM_API_KEY)
-        os.environ.setdefault("AZURE_OPENAI_API_KEY", openai_api_key or VLLM_API_KEY)
+        scorer_api_key = get_launch_secret_from_env("scorer_api_key", run.config)
+        os.environ.setdefault("OPENAI_API_KEY", scorer_api_key or VLLM_API_KEY)
+        os.environ.setdefault("AZURE_OPENAI_API_KEY", scorer_api_key or VLLM_API_KEY)
 
         hf_token = get_launch_secret_from_env("hf_token", run.config)
         if hf_token:

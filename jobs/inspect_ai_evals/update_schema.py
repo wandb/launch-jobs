@@ -28,6 +28,8 @@ def generate_schema():
                 "type": "array",
                 "title": "Tasks",
                 "description": "Select the tasks to run. For more information on the tasks, see the docs at: https://inspect.aisi.org.uk/evals/.",
+                "minItems": 1,
+                "maxItems": 4,
                 "items": {
                     "type": "string",
                     "enum": tasks,
