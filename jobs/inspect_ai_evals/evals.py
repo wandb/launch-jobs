@@ -60,7 +60,7 @@ def main():
                 if run.config.get("create_leaderboard", True):
                     create_leaderboard()
 
-            except Exception as e:
+            except Exception:
                 wandb.termerror(f"Task {task} failed to run")
                 failed_tasks.append(task)
                 
