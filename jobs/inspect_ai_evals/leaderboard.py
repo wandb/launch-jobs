@@ -1,5 +1,4 @@
-import logging
-
+import wandb
 import weave
 from weave.evaluation.eval_imperative import EvaluationLogger
 from weave.evaluation.eval_imperative import _active_evaluation_loggers
@@ -7,7 +6,6 @@ from weave.flow import leaderboard
 from weave.trace import urls as weave_urls
 from weave.trace.ref_util import get_ref
 
-logger = logging.getLogger(__name__)
 
 LEADERBOARD_REF = "Inspect-AI-Leaderboard"
 LEADERBOARD_NAME = "Inspect AI Leaderboard"
@@ -96,5 +94,4 @@ def create_leaderboard(
         print(f"View Leaderboard in Weave: {url}")
 
     except Exception as e:
-        logger.error(f"Failed to create leaderboard: {e}", exc_info=True)
-        print(f"Failed to create leaderboard: {e}")
+        wandb.termerror(f"Failed to create leaderboard: {e}")

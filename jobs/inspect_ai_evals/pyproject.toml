@@ -13,6 +13,7 @@ dependencies = [
     "huggingface-hub>=0.31.1",
     "inspect-ai>=0.3.69",
     "inspect-evals",
+    "inspect-evals[ifeval]",
     "inspect-wandb[weave]",
     "openai>=1.78.1",
     "pandas>=2.2.3",

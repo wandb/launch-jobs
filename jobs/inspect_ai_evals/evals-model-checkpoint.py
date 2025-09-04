@@ -9,7 +9,6 @@ from inspect_ai.model import get_model
 from wandb.sdk import launch
 
 from leaderboard import create_leaderboard
-from exception import handle_exception, UnsuccessfulEvaluation
 from launch_secrets import get_launch_secret_from_env
 
 
@@ -53,11 +52,11 @@ def main():
         os.environ.setdefault("INSPECT_EVAL_MODEL", VLLM_MODEL_NAME)
         os.environ.setdefault("VLLM_API_KEY", VLLM_API_KEY)
         os.environ.setdefault("VLLM_BASE_URL", f"{server_base}/v1")
-        os.environ.setdefault("INSPECT_EVAL_MODEL_BASE_URL", f"{server_base}/v1")
 
         scorer_api_key = get_launch_secret_from_env("scorer_api_key", run.config)
-        os.environ.setdefault("OPENAI_API_KEY", scorer_api_key or VLLM_API_KEY)
-        os.environ.setdefault("AZURE_OPENAI_API_KEY", scorer_api_key or VLLM_API_KEY)
+        if scorer_api_key:
+            os.environ.setdefault("OPENAI_API_KEY", scorer_api_key)
+            os.environ.setdefault("AZURE_OPENAI_API_KEY", scorer_api_key)
 
         hf_token = get_launch_secret_from_env("hf_token", run.config)
         if hf_token:
@@ -73,29 +72,38 @@ def main():
                 base_url=f"{server_base}/v1",
                 api_key=VLLM_API_KEY,
             )
-            tasks = [
-                task_with(load_tasks([task])[0], model=model)
-                for task in run.config["tasks"]
-            ]
-
-            success, _ = eval_set(
-                tasks=tasks,
-                log_dir="logs/",
-                limit=run.config.get("limit", 5),
-                log_dir_allow_dirty=True,
-            )
-
-            if not success:
-                raise UnsuccessfulEvaluation()
-
-            if run.config.get("create_leaderboard", True):
-                create_leaderboard()
-
         except Exception as e:
-            handle_exception(e)
-            raise e
-        finally:
+            wandb.termerror(f"Error initializing model: {e}")
             weave_client.finish()
+            raise e
+
+        failed_tasks = []
+        for task in run.config["tasks"]:
+            try:
+                loaded_task = [task_with(load_tasks([task])[0], model=model)]
+                success, _ = eval_set(
+                    tasks=loaded_task,
+                    log_dir="logs/",
+                    limit=run.config.get("limit", 5),
+                    log_dir_allow_dirty=True,
+                )
+                
+                if not success:
+                    wandb.termerror(f"Task {task} did not run successfully")
+                    failed_tasks.append(task)
+                    continue
+                
+                if run.config.get("create_leaderboard", True):
+                    create_leaderboard()
+                    
+            except Exception:
+                wandb.termerror(f"Task {task} failed to run")
+                failed_tasks.append(task)
+                
+        if failed_tasks:
+            wandb.termerror(f"Failed to run tasks: {failed_tasks}")
+
+        weave_client.finish()
 
 
 if __name__ == "__main__":

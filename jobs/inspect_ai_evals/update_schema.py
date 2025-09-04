@@ -20,6 +20,49 @@ def generate_schema():
         for task in item.get("tasks", [])
         if "sandbox" not in item.get("metadata", {}) and task.get("name")
     ]
+    
+    unsupported_tasks = [
+        # Sandbox tasks
+        "inspect_evals/cybench",
+        "inspect_evals/gdm_intercode_ctf",
+        "inspect_evals/gdm_approved_directories",
+        "inspect_evals/gdm_calculator_improvement",
+        "inspect_evals/gdm_context_length_mod_instrumental_only",
+        "inspect_evals/gdm_context_length_mod_irreversibility_only",
+        "inspect_evals/gdm_database_tool",
+        "inspect_evals/gdm_latency_calculator",
+        "inspect_evals/gdm_max_messages_calculator",
+        "inspect_evals/gdm_max_tokens",
+        "inspect_evals/gdm_oversight_frequency",
+        "inspect_evals/gdm_read_logs",
+        "inspect_evals/gdm_turn_off_filters",
+        "inspect_evals/gdm_classifier_evasion",
+        "inspect_evals/gdm_cover_your_tracks",
+        "inspect_evals/gdm_oversight_pattern",
+        "inspect_evals/gdm_strategic_rule_breaking",
+        
+        # Skipping for now. Memory heavy and can lead to crashes.
+        "inspect_evals/docvqa",
+        "inspect_evals/bold",
+        
+        # Requires further investigation
+        "inspect_evals/mathvista",
+        "inspect_evals/squad",
+        "inspect_evals/mind2web",
+        "inspect_evals/sciknoweval",
+        "inspect_evals/Zerobench",
+        "inspect_evals/Zerobench Subquestions",
+        
+        # Skipping for now. Requires additional input for the judge model
+        "inspect_evals/writingbench",
+        
+        # Pins pandas version to 2.2.2
+        "inspect_evals/livebench",
+    ]
+
+    tasks = [task for task in tasks if task not in unsupported_tasks]
+    
+    tasks = sorted(tasks)
 
     return {
         "type": "object",
