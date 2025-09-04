@@ -18,6 +18,7 @@ import requests
 
 MAX_TIMEOUT = 900  # 15 minutes
 VLLM_API_KEY = "token-abc123"  # This should match the API key set on the vLLM server.
+VLLM_MODEL_NAME = "vllm/user-model"
 
 
 def wait_for_vllm(
@@ -49,6 +50,11 @@ def main():
         server_base = wait_for_vllm(run)
         print(f"VLLM server started at {server_base}")
 
+        os.environ.setdefault("INSPECT_EVAL_MODEL", VLLM_MODEL_NAME)
+        os.environ.setdefault("VLLM_API_KEY", VLLM_API_KEY)
+        os.environ.setdefault("VLLM_BASE_URL", f"{server_base}/v1")
+        os.environ.setdefault("INSPECT_EVAL_MODEL_BASE_URL", f"{server_base}/v1")
+
         scorer_api_key = get_launch_secret_from_env("scorer_api_key", run.config)
         os.environ.setdefault("OPENAI_API_KEY", scorer_api_key or VLLM_API_KEY)
         os.environ.setdefault("AZURE_OPENAI_API_KEY", scorer_api_key or VLLM_API_KEY)
@@ -63,7 +69,7 @@ def main():
 
         try:
             model = get_model(
-                "vllm/user-model",
+                VLLM_MODEL_NAME,
                 base_url=f"{server_base}/v1",
                 api_key=VLLM_API_KEY,
             )
