@@ -10,6 +10,7 @@ from wandb.sdk import launch
 
 from leaderboard import create_leaderboard
 from launch_secrets import get_launch_secret_from_env
+from datasets.exceptions import DatasetNotFoundError
 
 def main():
     with wandb.init(config=launch.load_wandb_config()) as run:
@@ -36,13 +37,14 @@ def main():
             os.environ.setdefault("INSPECT_EVAL_MODEL", model_name)
             os.environ.setdefault("INSPECT_GRADER_MODEL", model_name)
         except Exception as e:
-            wandb.termerror(f"Error initializing model. Please check if the base URL is valid and the API key is correct: {e}")
+            wandb.termerror(f"Error initializing model: {e}")
+            wandb.termlog("Hint: Please check if the job inputs for the model is correct ('Base URL', 'Name' and 'API Key')")
             weave_client.finish()
             raise e
 
         
         failed_tasks = []
-        for task in run.config["tasks"]:
+        for task in run.config.get("tasks", []):
             try:
                 loaded_task = [task_with(load_tasks([task])[0], model=model)]
                 success, _ = eval_set(
@@ -60,15 +62,19 @@ def main():
                 if run.config.get("create_leaderboard", True):
                     create_leaderboard()
 
-            except Exception:
+            except Exception as e:
                 wandb.termerror(f"Task {task} failed to run")
-                failed_tasks.append(task)
+                failed_tasks.append((task, e))
                 
         if failed_tasks:
-            wandb.termerror(f"Failed to run tasks: {failed_tasks}")
+            wandb.termerror(f"The following tasks failed to run: {[task for (task, _) in failed_tasks]}")
+            for task, e in failed_tasks:
+                wandb.termerror(f"Task {task} failed to run with error: {e}")
+                if isinstance(e, DatasetNotFoundError):
+                    wandb.termlog("Hint: This may be a gated dataset. Please check that you have set the 'Hugging Face Token' in the job input and have accepted the agreement on Hugging Face.")
             
         weave_client.finish()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": 
     main()
