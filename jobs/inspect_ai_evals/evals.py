@@ -12,6 +12,22 @@ from leaderboard import create_leaderboard
 from launch_secrets import get_launch_secret_from_env
 from datasets.exceptions import DatasetNotFoundError
 
+def get_provider_from_model_name(model_name: str) -> str:
+    if model_name.startswith("anthropic/"):
+        return "anthropic"
+    elif model_name.startswith("openai/"):
+        return "openai"
+    elif model_name.startswith("google/"):
+        return "google"
+    else:
+        raise ValueError(f"Invalid model name: {model_name}")
+
+PROVIDER_TO_API_KEY_ENV = {
+    "anthropic": "ANTHROPIC_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "google": "GOOGLE_API_KEY",
+}
+
 def main():
     with wandb.init(config=launch.load_wandb_config()) as run:
         weave_client = weave.init(f"{run.entity}/{run.project}")
@@ -23,22 +39,28 @@ def main():
             os.environ.setdefault("HUGGINGFACE_TOKEN", hf_token)
 
         api_key = get_launch_secret_from_env("api_key_var", run.config["model"])
-        if api_key:
-            os.environ.setdefault("OPENAI_API_KEY", api_key)
-
         model_name = run.config["model"]["model_name"]
+        if api_key:
+            os.environ.setdefault(PROVIDER_TO_API_KEY_ENV[get_provider_from_model_name(model_name)], api_key)
+        else:
+            wandb.termerror(f"API key for model {model_name} not found")
+            weave_client.finish()
+            raise ValueError(f"API key for model {model_name} not found")
+
+        # Some evals use an OpenAI model as the default scorer.
+        # Otherwise, we can use the model selected by the user (see INSPECT_GRADER_MODEL)
+        scorer_api_key = get_launch_secret_from_env("scorer_api_key", run.config)
+        if scorer_api_key:
+            os.environ.setdefault("OPENAI_API_KEY", scorer_api_key)
+
         try:
-            model = get_model(
-                model_name,
-                base_url=run.config["model"].get("base_url"),
-                api_key=api_key,
-            )
+            model = get_model(model_name, api_key=api_key)
                 
             os.environ.setdefault("INSPECT_EVAL_MODEL", model_name)
             os.environ.setdefault("INSPECT_GRADER_MODEL", model_name)
         except Exception as e:
             wandb.termerror(f"Error initializing model: {e}")
-            wandb.termlog("Hint: Please check if the job inputs for the model is correct ('Base URL', 'Name' and 'API Key')")
+            wandb.termlog("Hint: Please check if the job inputs for the model is correct ('Name' and 'API Key')")
             weave_client.finish()
             raise e
 
@@ -50,7 +72,7 @@ def main():
                 success, _ = eval_set(
                     tasks=loaded_task,
                     log_dir="logs/",
-                    limit=run.config.get("limit", 5),
+                    limit=run.config.get("limit", None),
                     log_dir_allow_dirty=True,
                 )
                 
