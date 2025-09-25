@@ -13,6 +13,7 @@ dependencies = [
     "huggingface-hub>=0.31.1",
     "inspect-ai>=0.3.69",
     "inspect-evals",
+    "inspect-evals[ifeval]",
     "inspect-wandb[weave]",
     "openai>=1.78.1",
     "pandas>=2.2.3",
@@ -22,6 +23,8 @@ dependencies = [
     "sympy>=1.14.0",
     "wandb>=0.19.11",
     "weave>=0.51.59",
+    "google-genai",
+    "rouge",
 ]
 
 [tool.uv.sources]

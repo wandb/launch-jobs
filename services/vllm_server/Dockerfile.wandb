@@ -1,0 +1,9 @@
+FROM vllm/vllm-openai:latest
+
+WORKDIR /launch
+
+COPY --link server.py ./
+
+RUN pip install wandb
+
+ENTRYPOINT ["python3", "server.py"]
