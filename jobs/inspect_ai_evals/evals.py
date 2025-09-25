@@ -73,6 +73,8 @@ def main():
                     tasks=loaded_task,
                     log_dir="logs/",
                     limit=run.config.get("limit", None),
+                    retry_attempts=1,
+                    retry_wait=10,
                     log_dir_allow_dirty=True,
                 )
                 

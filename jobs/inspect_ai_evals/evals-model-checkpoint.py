@@ -17,7 +17,6 @@ import requests
 
 MAX_TIMEOUT = 900  # 15 minutes
 VLLM_API_KEY = "token-abc123"  # This should match the API key set on the vLLM server.
-VLLM_MODEL_NAME = "vllm/user-model"
 
 
 def wait_for_vllm(
@@ -48,6 +47,12 @@ def main():
         print("Waiting for VLLM server to start...")
         server_base = wait_for_vllm(run)
         print(f"VLLM server started at {server_base}")
+
+        artifact_path = run.config.get("artifact_path")
+        if not artifact_path:
+            raise ValueError("Artifact path is required")
+
+        VLLM_MODEL_NAME = f"vllm/{artifact_path}"
 
         os.environ.setdefault("INSPECT_EVAL_MODEL", VLLM_MODEL_NAME)
         os.environ.setdefault("VLLM_API_KEY", VLLM_API_KEY)
@@ -85,6 +90,8 @@ def main():
                     tasks=loaded_task,
                     log_dir="logs/",
                     limit=run.config.get("limit", 5),
+                    retry_attempts=1,
+                    retry_wait=10,
                     log_dir_allow_dirty=True,
                 )
                 
