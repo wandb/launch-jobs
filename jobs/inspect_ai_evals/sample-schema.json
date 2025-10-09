@@ -120,35 +120,12 @@
         "model_name": {
           "type": "string",
           "title": "Model name",
-          "description": "Name of the model to use for the evaluation job",
-          "enum": [
-            "openai/chatgpt-4o-latest",
-            "openai/gpt-3.5-turbo",
-            "openai/gpt-4",
-            "openai/gpt-4-turbo",
-            "openai/gpt-4.1",
-            "openai/gpt-4.1-mini",
-            "openai/gpt-4.1-nano",
-            "openai/gpt-4o",
-            "openai/gpt-4o-mini",
-            "openai/gpt-5",
-            "openai/gpt-5-chat-latest",
-            "openai/gpt-5-mini",
-            "openai/gpt-5-nano",
-            "openai/gpt-audio",
-            "openai/o1",
-            "openai/o1-mini",
-            "openai/o1-pro",
-            "openai/o3",
-            "openai/o3-mini",
-            "openai/o3-pro",
-            "openai/o4-mini",
-            "anthropic/claude-opus-4-1",
-            "anthropic/claude-opus-4-0",
-            "anthropic/claude-sonnet-4-0",
-            "anthropic/claude-3-7-sonnet-latest",
-            "anthropic/claude-3-5-haiku-latest"
-          ]
+          "description": "Name of the model to use for the evaluation job (e.g. openai/gpt-4o)"
+        },
+        "base_url": {
+          "type": "string",
+          "title": "Base URL",
+          "description": "Base URL for the model to use for the evaluation job (e.g. https://api.openai.com/v1)"
         },
         "api_key_var": {
           "type": "string",
