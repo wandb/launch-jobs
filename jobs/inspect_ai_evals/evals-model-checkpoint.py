@@ -14,17 +14,23 @@ from launch_secrets import get_launch_secret_from_env
 
 import time
 import requests
+import re
 
 MAX_TIMEOUT = 900  # 15 minutes
 VLLM_API_KEY = "token-abc123"  # This should match the API key set on the vLLM server.
 
+def make_k8s_label_safe(value: str) -> str:
+    safe = value.replace("_", "-").lower()
+    safe = re.sub(r"[^a-z0-9\-]", "", safe)
+    safe = re.sub(r"-+", "-", safe)
+    safe = safe[:63].strip("-")
+    return safe
 
 def wait_for_vllm(
     run: wandb.sdk.wandb_run.Run,
 ) -> str:
-    base_url = (
-        f"http://evals-{run.entity}-{run.project}-{run.id}.wandb.svc.cluster.local:8000"
-    )
+    endpoint = make_k8s_label_safe(f"evals-{run.entity}-{run.project}-{run.id}")
+    base_url = f"http://{endpoint}.wandb.svc.cluster.local:8000"
     start_time = time.time()
     while time.time() - start_time < MAX_TIMEOUT:
         try:

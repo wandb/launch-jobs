@@ -3,7 +3,7 @@
   "properties": {
     "tasks": {
       "type": "array",
-      "title": "Tasks",
+      "title": "Select evaluations",
       "description": "Select the tasks to run. For more information on the tasks, see the docs at https://inspect.aisi.org.uk/evals/.",
       "minItems": 1,
       "maxItems": 4,
