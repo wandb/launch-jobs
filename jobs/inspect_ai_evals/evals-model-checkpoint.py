@@ -14,18 +14,25 @@ from launch_secrets import get_launch_secret_from_env
 
 import time
 import requests
+import re
 
 MAX_TIMEOUT = 900  # 15 minutes
 VLLM_API_KEY = "token-abc123"  # This should match the API key set on the vLLM server.
 
+def make_k8s_label_safe(value: str) -> str:
+    safe = value.replace("_", "-").lower()
+    safe = re.sub(r"[^a-z0-9\-]", "", safe)
+    safe = re.sub(r"-+", "-", safe)
+    safe = safe[:63].strip("-")
+    return safe
 
 def wait_for_vllm(
     run: wandb.sdk.wandb_run.Run,
 ) -> str:
-    base_url = (
-        f"http://evals-{run.entity}-{run.project}-{run.id}.wandb.svc.cluster.local:8000"
-    )
+    endpoint = make_k8s_label_safe(f"evals-{run.id}-{run.project}-{run.entity}")
+    base_url = f"http://{endpoint}.wandb.svc.cluster.local:8000"
     start_time = time.time()
+    print(f"Waiting for VLLM server to start at {base_url}")
     while time.time() - start_time < MAX_TIMEOUT:
         try:
             resp = requests.get(
@@ -44,7 +51,6 @@ def wait_for_vllm(
 
 def main():
     with wandb.init(config=launch.load_wandb_config()) as run:
-        print("Waiting for VLLM server to start...")
         server_base = wait_for_vllm(run)
         print(f"VLLM server started at {server_base}")
 
@@ -58,12 +64,12 @@ def main():
         os.environ.setdefault("VLLM_API_KEY", VLLM_API_KEY)
         os.environ.setdefault("VLLM_BASE_URL", f"{server_base}/v1")
 
-        scorer_api_key = get_launch_secret_from_env("scorer_api_key", run.config)
+        _, scorer_api_key = get_launch_secret_from_env("scorer_api_key", run.config)
         if scorer_api_key:
             os.environ.setdefault("OPENAI_API_KEY", scorer_api_key)
             os.environ.setdefault("AZURE_OPENAI_API_KEY", scorer_api_key)
 
-        hf_token = get_launch_secret_from_env("hf_token", run.config)
+        _, hf_token = get_launch_secret_from_env("hf_token", run.config)
         if hf_token:
             os.environ.setdefault("HUGGINGFACE_HUB_TOKEN", hf_token)
             os.environ.setdefault("HF_TOKEN", hf_token)
