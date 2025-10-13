@@ -17,9 +17,18 @@ jobs:
               echo "Changes detected in << parameters.subdir >>, building Docker image."
               echo $DOCKERHUB_TOKEN | docker login --username davidwandb --password-stdin
               docker buildx create --platform linux/amd64,linux/arm64 --use
-              cd << parameters.subdir >>
-              image_name=$(echo "<< parameters.subdir >>" | sed 's/jobs\//job_/g; s/\//_/g')
-              docker buildx build --platform linux/amd64,linux/arm64 -t wandb/$image_name:$CIRCLE_BRANCH --push --file Dockerfile.wandb . 
+              
+              # Special handling for inspect_ai_evals subdirectories since they have shared code across jobs
+              if [[ "<< parameters.subdir >>" == jobs/inspect_ai_evals/* ]]; then
+                subdir_name=$(basename << parameters.subdir >>)
+                cd jobs/inspect_ai_evals
+                image_name=$(echo "<< parameters.subdir >>" | sed 's/jobs\//job_/g; s/\//_/g')
+                docker buildx build --platform linux/amd64,linux/arm64 -t wandb/$image_name:$CIRCLE_BRANCH --push --file ${subdir_name}/Dockerfile.wandb .
+              else
+                cd << parameters.subdir >>
+                image_name=$(echo "<< parameters.subdir >>" | sed 's/jobs\//job_/g; s/services\//service_/g; s/\//_/g')
+                docker buildx build --platform linux/amd64,linux/arm64 -t wandb/$image_name:$CIRCLE_BRANCH --push --file Dockerfile.wandb .
+              fi
             else
               echo "No changes in << parameters.subdir >>, skipping build."
             fi
@@ -43,10 +52,13 @@ workflows:
                   "jobs/gpu_optimize_with_tensor_rt",
                   "jobs/hello_world",
                   "jobs/http_webhook",
+                  "jobs/inspect_ai_evals/model_checkpoint",
+                  "jobs/inspect_ai_evals/api_model",
                   "jobs/msft_teams_webhook",
                   "jobs/openai_evals",
                   "jobs/sql_query",
                   "jobs/stable_diffusion_inference",
                   "jobs/sweep_schedulers/optuna_scheduler",
                   "jobs/sweep_schedulers/wandb_scheduler",
+                  "services/vllm_server",
                 ]
