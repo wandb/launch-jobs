@@ -8,11 +8,16 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
 RUN pip install uv
 
 WORKDIR /workspace
-COPY . .
+
+# Copy shared files from parent directory
+COPY pyproject.toml launch_secrets.py leaderboard.py ./
+
+# Copy job-specific files from subdirectory
+COPY api_model/ ./
 
 ENV UV_LINK_MODE=copy
 RUN --mount=type=cache,target=/root/.cache/uv uv pip install -r pyproject.toml --system
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["/bin/sh", "-c", "python3 evals-model-checkpoint.py"]
+CMD ["/bin/sh", "-c", "python3 evals.py"]
