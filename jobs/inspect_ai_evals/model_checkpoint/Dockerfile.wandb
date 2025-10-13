@@ -20,4 +20,4 @@ RUN --mount=type=cache,target=/root/.cache/uv uv pip install -r pyproject.toml -
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["/bin/sh", "-c", "python3 evals-model-checkpoint.py"]
+CMD ["/bin/sh", "-c", "python3 evals_model_checkpoint.py"]
