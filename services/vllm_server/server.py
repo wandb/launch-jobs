@@ -17,6 +17,8 @@ wandb_api = wandb.Api()
 model = wandb_api.artifact(artifact_path).download() if artifact_path else model_name
 model_name = artifact_path if artifact_path else model_name
 
+print(f"Starting vLLM server with model: {model_name}")
+
 args = [
     "vllm",
     "serve",
