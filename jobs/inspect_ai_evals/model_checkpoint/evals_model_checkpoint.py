@@ -115,6 +115,7 @@ def main():
                 
         if failed_tasks:
             wandb.termerror(f"Failed to run tasks: {failed_tasks}")
+            run.finish(exit_code=1)
 
         weave_client.finish()
 

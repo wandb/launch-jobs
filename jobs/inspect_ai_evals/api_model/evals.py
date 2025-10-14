@@ -82,6 +82,7 @@ def main():
                 wandb.termerror(f"Task {task} failed to run with error: {e}")
                 if isinstance(e, DatasetNotFoundError):
                     wandb.termlog("Hint: This may be a gated dataset. Please check that you have set the 'Hugging Face Token' in the job input and have accepted the agreement on Hugging Face.")
+            run.finish(exit_code=1)
             
         weave_client.finish()
 
