@@ -15,7 +15,7 @@ dependencies = [
     "inspect-evals",
     "inspect-evals[ifeval]",
     "inspect-wandb[weave]",
-    "openai==1.106.1",
+    "openai==2.0.0",
     "pandas>=2.2.3",
     "pyarrow>=20.0.0",
     "pydantic==2.11.7",
