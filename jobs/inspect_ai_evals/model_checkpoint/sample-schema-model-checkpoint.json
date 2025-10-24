@@ -3,7 +3,7 @@
   "properties": {
     "tasks": {
       "type": "array",
-      "title": "Select evaluations",
+      "title": "Evaluations",
       "description": "Select the tasks to run. For more information on the tasks, see the docs at https://inspect.aisi.org.uk/evals/.",
       "minItems": 1,
       "maxItems": 4,
@@ -45,29 +45,30 @@
     },
     "limit": {
       "type": "integer",
-      "title": "Sample Limit",
-      "description": "Maximum number of samples to evaluate for each task (e.g. 5, 10, 25, 50)"
+      "title": "Sample limit",
+      "description": "Maximum number of samples to evaluate for each task (e.g. 5, 10, 25, 50).",
+      "exclusiveMinimum": 0
     },
     "artifact_path": {
       "type": "string",
-      "title": "Artifact Path",
-      "description": "Path to the model artifact to use for the evaluation job",
+      "title": "Model artifact",
+      "description": "Path to the model artifact to use for the evaluation job.",
       "format": "artifact_path"
     },
     "create_leaderboard": {
       "type": "boolean",
-      "title": "Create a Leaderboard?",
-      "description": "Choose to create a leaderboard from eval loggers. This will be updated with the results of the evaluation."
+      "title": "Leaderboard",
+      "description": "Evaluation results will be shown in a leaderboard. Once generated, leaderboards can be found in the Leaders page of your project."
     },
     "hf_token": {
       "type": "string",
-      "title": "Hugging Face Token",
+      "title": "Hugging Face token",
       "description": "(Optional) Personal access token used to read gated datasets from Hugging Face.",
       "format": "secret"
     },
     "scorer_api_key": {
       "type": "string",
-      "title": "Scorer API Key",
+      "title": "Scorer API key",
       "description": "(Optional) Some evals use an OpenAI model as the default scorer.",
       "format": "secret"
     }
