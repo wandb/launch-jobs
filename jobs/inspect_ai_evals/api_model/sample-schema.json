@@ -3,7 +3,7 @@
   "properties": {
     "tasks": {
       "type": "array",
-      "title": "Select evaluations",
+      "title": "Evaluations",
       "description": "Select the tasks to run. For more information on the tasks, see the docs at: https://inspect.aisi.org.uk/evals/.",
       "minItems": 1,
       "maxItems": 4,
@@ -110,39 +110,40 @@
     "limit": {
       "type": "integer",
       "title": "Sample limit",
-      "description": "Maximum number of samples to evaluate for each task (e.g. 5, 10, 25, 50)"
+      "description": "Maximum number of samples to evaluate for each task (e.g. 5, 10, 25, 50).",
+      "exclusiveMinimum": 0
     },
     "model": {
       "type": "object",
-      "title": "Select model",
+      "title": "Model",
       "description": "Model to use for the evaluation job",
       "properties": {
         "model_name": {
           "type": "string",
           "title": "Model name",
-          "description": "Name of the model to use for the evaluation job (e.g. openai/gpt-4o)"
+          "description": "Name of the model to use for the evaluation job (e.g. openai/gpt-4o)."
         },
         "base_url": {
           "type": "string",
           "title": "Base URL",
-          "description": "Base URL for the model to use for the evaluation job (e.g. https://api.openai.com/v1)"
+          "description": "Base URL for the model to use for the evaluation job (e.g. https://api.openai.com/v1)."
         },
         "api_key_var": {
           "type": "string",
-          "title": "API Key",
-          "description": "API key for model access",
+          "title": "API key",
+          "description": "API key for model access. Team secrets can be managed in your team settings by team admins.",
           "format": "secret"
         }
       }
     },
     "create_leaderboard": {
       "type": "boolean",
-      "title": "Publish results to leaderboard",
-      "description": "If enabled, the evaluation results will be published to your project's default 'Inspect AI Leaderboard'."
+      "title": "Leaderboard",
+      "description": "Evaluation results will be shown in a leaderboard. Once generated, leaderboards can be found in the Leaders page of your project."
     },
     "hf_token": {
       "type": "string",
-      "title": "Hugging face token",
+      "title": "Hugging Face token",
       "description": "(Optional) Personal access token used to read gated datasets from Hugging Face.",
       "format": "secret"
     },
