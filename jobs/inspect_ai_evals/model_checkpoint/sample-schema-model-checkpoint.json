@@ -46,7 +46,8 @@
     "limit": {
       "type": "integer",
       "title": "Sample limit",
-      "description": "Maximum number of samples to evaluate for each task (e.g. 5, 10, 25, 50).",
+      "description": "Maximum number of samples to evaluate for each task.",
+      "placeholder": "E.g. 5",
       "exclusiveMinimum": 0
     },
     "artifact_path": {
@@ -58,6 +59,7 @@
     "create_leaderboard": {
       "type": "boolean",
       "title": "Leaderboard",
+      "label": "Publish results to leaderboard",
       "description": "Evaluation results will be shown in a leaderboard. Once generated, leaderboards can be found in the Leaders page of your project."
     },
     "hf_token": {
