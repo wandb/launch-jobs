@@ -103,18 +103,20 @@ def main():
                 
                 if not success:
                     wandb.termerror(f"Task {task} did not run successfully")
-                    failed_tasks.append(task)
+                    failed_tasks.append((task, Exception("Task did not complete successfully. Check the logs for more details.")))
                     continue
                 
                 if run.config.get("create_leaderboard", True):
                     create_leaderboard()
                     
-            except Exception:
+            except Exception as e:
                 wandb.termerror(f"Task {task} failed to run")
-                failed_tasks.append(task)
+                failed_tasks.append((task, e))
                 
         if failed_tasks:
-            wandb.termerror(f"Failed to run tasks: {failed_tasks}")
+            wandb.termerror(f"The following tasks failed to run: {[task for (task, _) in failed_tasks]}")
+            for task, e in failed_tasks:
+                wandb.termerror(f"Task {task} failed to run with error: {e}")
             run.finish(exit_code=1)
 
         weave_client.finish()
