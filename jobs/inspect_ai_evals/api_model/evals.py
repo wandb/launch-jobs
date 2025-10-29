@@ -66,7 +66,7 @@ def main():
                 
                 if not success:
                     wandb.termerror(f"Task {task} did not run successfully")
-                    failed_tasks.append(task)
+                    failed_tasks.append((task, Exception("Task did not complete successfully. Check the logs for more details.")))
                     continue
                 
                 if run.config.get("create_leaderboard", True):
