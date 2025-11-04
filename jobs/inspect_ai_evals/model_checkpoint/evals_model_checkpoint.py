@@ -18,6 +18,7 @@ import re
 
 MAX_TIMEOUT = 900  # 15 minutes
 VLLM_API_KEY = "token-abc123"  # This should match the API key set on the vLLM server.
+INSPECT_EVAL_PREFIX = "inspect_evals/"
 
 def make_k8s_label_safe(value: str) -> str:
     safe = value.replace("_", "-").lower()
@@ -91,7 +92,7 @@ def main():
         failed_tasks = []
         for task in run.config["tasks"]:
             try:
-                loaded_task = [task_with(load_tasks([task])[0], model=model)]
+                loaded_task = [task_with(load_tasks([f"{INSPECT_EVAL_PREFIX}{task}"])[0], model=model)]
                 success, _ = eval_set(
                     tasks=loaded_task,
                     log_dir="logs/",
