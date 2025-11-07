@@ -17,6 +17,10 @@ wandb_api = wandb.Api()
 model = wandb_api.artifact(artifact_path).download() if artifact_path else model_name
 model_name = artifact_path if artifact_path else model_name
 
+max_model_len = wandb_config.get("max_model_len", 262144)
+tensor_parallel_size = wandb_config.get("tensor_parallel_size", 2)
+gpu_memory_utilization = wandb_config.get("gpu_memory_utilization", 0.9)
+
 print(f"Starting vLLM server with model: {model_name}")
 
 args = [
@@ -31,7 +35,13 @@ args = [
     "0.0.0.0",
     "--port",
     "8000",
-]
+    "--max-model-len",
+    str(max_model_len)  ,
+    "--tensor-parallel-size",
+    str(tensor_parallel_size),
+    "--gpu-memory-utilization",
+    str(gpu_memory_utilization),
+] 
 
 vllm_server = subprocess.Popen(
     args,
