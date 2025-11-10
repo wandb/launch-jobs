@@ -12,16 +12,19 @@ artifact_path = wandb_config.get("artifact_path")
 if not model_name and not artifact_path:
     raise ValueError("model_name or artifact_path are required")
 
-wandb_api = wandb.Api()
+model = None
+served_model_name = None
 
-model = wandb_api.artifact(artifact_path).download() if artifact_path else model_name
-model_name = artifact_path if artifact_path else model_name
+if model_name:
+    model = model_name
+    served_model_name = model_name
+else:
+    wandb_api = wandb.Api()
+    model = wandb_api.artifact(artifact_path).download()
+    served_model_name = artifact_path
 
-max_model_len = wandb_config.get("max_model_len", 262144)
-tensor_parallel_size = wandb_config.get("tensor_parallel_size", 2)
-gpu_memory_utilization = wandb_config.get("gpu_memory_utilization", 0.9)
 
-print(f"Starting vLLM server with model: {model_name}")
+print(f"Starting vLLM server with model: {served_model_name}")
 
 args = [
     "vllm",
@@ -30,18 +33,17 @@ args = [
     "--api-key",
     "token-abc123",
     "--served-model-name",
-    model_name,
+    served_model_name,
     "--host",
     "0.0.0.0",
     "--port",
     "8000",
-    "--max-model-len",
-    str(max_model_len)  ,
     "--tensor-parallel-size",
-    str(tensor_parallel_size),
-    "--gpu-memory-utilization",
-    str(gpu_memory_utilization),
-] 
+    "1",
+    "--pipeline-parallel-size",
+    "2",
+    
+]
 
 vllm_server = subprocess.Popen(
     args,
@@ -52,9 +54,11 @@ vllm_server = subprocess.Popen(
     universal_newlines=True,
 )
 
+
 def log_output(pipe, prefix):
     for line in pipe:
         print(f"{prefix}: {line.strip()}")
+
 
 stdout_thread = threading.Thread(
     target=log_output, args=(vllm_server.stdout, "vllm stdout")
