@@ -4,7 +4,7 @@
     "tasks": {
       "type": "array",
       "title": "Evaluations",
-      "description": "Select the tasks to run. For more information on the tasks, see the docs at: https://inspect.aisi.org.uk/evals/.",
+      "description": "Select the tasks to run. For more information on the tasks, view [AISI Inspect Evals](https://inspect.aisi.org.uk/evals/).",
       "minItems": 1,
       "maxItems": 4,
       "placeholder": "Select evaluations",
