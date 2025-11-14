@@ -12,6 +12,8 @@ from leaderboard import create_leaderboard
 from launch_secrets import get_launch_secret_from_env
 from datasets.exceptions import DatasetNotFoundError
 
+INSPECT_EVAL_PREFIX = "inspect_evals/"
+
 def main():
     with wandb.init(config=launch.load_wandb_config()) as run:
         weave_client = weave.init(f"{run.entity}/{run.project}")
@@ -54,7 +56,7 @@ def main():
         failed_tasks = []
         for task in run.config.get("tasks", []):
             try:
-                loaded_task = [task_with(load_tasks([task])[0], model=model)]
+                loaded_task = [task_with(load_tasks([f"{INSPECT_EVAL_PREFIX}{task}"])[0], model=model)]
                 success, _ = eval_set(
                     tasks=loaded_task,
                     log_dir="logs/",
