@@ -14,8 +14,10 @@ from datasets.exceptions import DatasetNotFoundError
 
 INSPECT_EVAL_PREFIX = "inspect_evals/"
 
+
 def main():
-    with wandb.init(config=launch.load_wandb_config()) as run:
+    config = launch.load_wandb_config()
+    with wandb.init(config=dict(config)) as run:
         weave_client = weave.init(f"{run.entity}/{run.project}")
 
         _, hf_token = get_launch_secret_from_env("hf_token", run.config)
@@ -24,7 +26,9 @@ def main():
             os.environ.setdefault("HF_TOKEN", hf_token)
             os.environ.setdefault("HUGGINGFACE_TOKEN", hf_token)
 
-        api_key_name, api_key = get_launch_secret_from_env("api_key_var", run.config.get("model", {}))
+        api_key_name, api_key = get_launch_secret_from_env(
+            "api_key_var", run.config.get("model", {})
+        )
         if api_key_name and api_key:
             os.environ.setdefault(api_key_name, api_key)
 
@@ -48,15 +52,20 @@ def main():
             os.environ.setdefault("INSPECT_GRADER_MODEL", model_name)
         except Exception as e:
             wandb.termerror(f"Error initializing model: {e}")
-            wandb.termlog("Hint: Please check if the job inputs for the model is correct ('Name' and 'API Key')")
+            wandb.termlog(
+                "Hint: Please check if the job inputs for the model is correct ('Name' and 'API Key')"
+            )
             weave_client.finish()
             raise e
 
-        
         failed_tasks = []
         for task in run.config.get("tasks", []):
             try:
-                loaded_task = [task_with(load_tasks([f"{INSPECT_EVAL_PREFIX}{task}"])[0], model=model)]
+                loaded_task = [
+                    task_with(
+                        load_tasks([f"{INSPECT_EVAL_PREFIX}{task}"])[0], model=model
+                    )
+                ]
                 success, _ = eval_set(
                     tasks=loaded_task,
                     log_dir="logs/",
@@ -65,29 +74,40 @@ def main():
                     retry_wait=10,
                     log_dir_allow_dirty=True,
                 )
-                
+
                 if not success:
                     wandb.termerror(f"Task {task} did not run successfully")
-                    failed_tasks.append((task, Exception("Task did not complete successfully. Check the logs for more details.")))
+                    failed_tasks.append(
+                        (
+                            task,
+                            Exception(
+                                "Task did not complete successfully. Check the logs for more details."
+                            ),
+                        )
+                    )
                     continue
-                
+
                 if run.config.get("create_leaderboard", True):
                     create_leaderboard()
 
             except Exception as e:
                 wandb.termerror(f"Task {task} failed to run")
                 failed_tasks.append((task, e))
-                
+
         if failed_tasks:
-            wandb.termerror(f"The following tasks failed to run: {[task for (task, _) in failed_tasks]}")
+            wandb.termerror(
+                f"The following tasks failed to run: {[task for (task, _) in failed_tasks]}"
+            )
             for task, e in failed_tasks:
                 wandb.termerror(f"Task {task} failed to run with error: {e}")
                 if isinstance(e, DatasetNotFoundError):
-                    wandb.termlog("Hint: This may be a gated dataset. Please check that you have set the 'Hugging Face Token' in the job input and have accepted the agreement on Hugging Face.")
+                    wandb.termlog(
+                        "Hint: This may be a gated dataset. Please check that you have set the 'Hugging Face Token' in the job input and have accepted the agreement on Hugging Face."
+                    )
             run.finish(exit_code=1)
-            
+
         weave_client.finish()
 
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     main()
