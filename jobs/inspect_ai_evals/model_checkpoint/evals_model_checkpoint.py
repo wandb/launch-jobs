@@ -20,12 +20,14 @@ MAX_TIMEOUT = 900  # 15 minutes
 VLLM_API_KEY = "token-abc123"  # This should match the API key set on the vLLM server.
 INSPECT_EVAL_PREFIX = "inspect_evals/"
 
+
 def make_k8s_label_safe(value: str) -> str:
     safe = value.replace("_", "-").lower()
     safe = re.sub(r"[^a-z0-9\-]", "", safe)
     safe = re.sub(r"-+", "-", safe)
     safe = safe[:63].strip("-")
     return safe
+
 
 def wait_for_vllm(
     run: wandb.sdk.wandb_run.Run,
@@ -51,7 +53,8 @@ def wait_for_vllm(
 
 
 def main():
-    with wandb.init(config=launch.load_wandb_config()) as run:
+    config = launch.load_wandb_config()
+    with wandb.init(config=dict(config)) as run:
         server_base = wait_for_vllm(run)
         print(f"VLLM server started at {server_base}")
 
@@ -92,7 +95,11 @@ def main():
         failed_tasks = []
         for task in run.config["tasks"]:
             try:
-                loaded_task = [task_with(load_tasks([f"{INSPECT_EVAL_PREFIX}{task}"])[0], model=model)]
+                loaded_task = [
+                    task_with(
+                        load_tasks([f"{INSPECT_EVAL_PREFIX}{task}"])[0], model=model
+                    )
+                ]
                 success, _ = eval_set(
                     tasks=loaded_task,
                     log_dir="logs/",
@@ -101,21 +108,30 @@ def main():
                     retry_wait=10,
                     log_dir_allow_dirty=True,
                 )
-                
+
                 if not success:
                     wandb.termerror(f"Task {task} did not run successfully")
-                    failed_tasks.append((task, Exception("Task did not complete successfully. Check the logs for more details.")))
+                    failed_tasks.append(
+                        (
+                            task,
+                            Exception(
+                                "Task did not complete successfully. Check the logs for more details."
+                            ),
+                        )
+                    )
                     continue
-                
+
                 if run.config.get("create_leaderboard", True):
                     create_leaderboard()
-                    
+
             except Exception as e:
                 wandb.termerror(f"Task {task} failed to run")
                 failed_tasks.append((task, e))
-                
+
         if failed_tasks:
-            wandb.termerror(f"The following tasks failed to run: {[task for (task, _) in failed_tasks]}")
+            wandb.termerror(
+                f"The following tasks failed to run: {[task for (task, _) in failed_tasks]}"
+            )
             for task, e in failed_tasks:
                 wandb.termerror(f"Task {task} failed to run with error: {e}")
             run.finish(exit_code=1)
