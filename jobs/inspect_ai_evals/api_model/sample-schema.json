@@ -11,7 +11,6 @@
       "items": {
         "type": "string",
         "enum": [
-          "agent_bench_os",
           "agentharm",
           "agentharm_benign",
           "agentic_misalignment",
