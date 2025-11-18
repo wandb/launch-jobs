@@ -49,7 +49,10 @@ def wait_for_vllm(
             pass
         time.sleep(5)
 
-    raise TimeoutError(f"VLLM server failed to start within {MAX_TIMEOUT} seconds")
+    raise TimeoutError(
+        f"VLLM server failed to respond to health checks within {MAX_TIMEOUT} seconds."
+        f"Please verify that your model is vLLM compatible and fits within the 86GB memory limit. "
+    )
 
 
 def main():
