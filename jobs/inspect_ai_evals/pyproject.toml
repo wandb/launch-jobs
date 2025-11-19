@@ -12,8 +12,7 @@ dependencies = [
     "black>=25.1.0",
     "huggingface-hub>=0.31.1",
     "inspect-ai>=0.3.69",
-    "inspect-evals",
-    "inspect-evals[ifeval]",
+    "inspect-evals[ifeval,sevenllm]",
     "inspect-wandb[weave]",
     "openai==2.0.0",
     "pandas>=2.2.3",
@@ -26,11 +25,13 @@ dependencies = [
     "weave>=0.51.59",
     "google-genai",
     "rouge",
+    "instruction-following-eval",
 ]
 
 [tool.uv.sources]
 inspect-evals = { git = "https://github.com/UKGovernmentBEIS/inspect_evals" }
 inspect-wandb = { git = "https://github.com/parambharat/inspect_wandb.git" }
+instruction-following-eval = { git = "https://github.com/josejg/instruction_following_eval.git" }
 
 [tool.inspect-wandb.weave]
 enabled = true
