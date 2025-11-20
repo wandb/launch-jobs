@@ -32,11 +32,17 @@ def main():
         if api_key_name and api_key:
             os.environ.setdefault(api_key_name, api_key)
 
-        # Some evals use an OpenAI model as the default scorer.
-        # Otherwise, we can use the model selected by the user (see INSPECT_GRADER_MODEL)
-        _, scorer_api_key = get_launch_secret_from_env("scorer_api_key", run.config)
-        if scorer_api_key:
-            os.environ.setdefault("OPENAI_API_KEY", scorer_api_key)
+        # Some evals use hosted models as the default scorer.
+        # These could be OpenAI, Anthropic, or Google models.
+        # * For OpenAI, the API key name is "OPENAI_API_KEY".
+        # * For Anthropic, the API key name is "ANTHROPIC_API_KEY".
+        # * For Google, the API key name is "GOOGLE_API_KEY".
+        # Otherwise, we can try to use the model selected by the user (see INSPECT_GRADER_MODEL below)
+        scorer_api_key_name, scorer_api_key = get_launch_secret_from_env(
+            "scorer_api_key", run.config
+        )
+        if scorer_api_key_name and scorer_api_key:
+            os.environ.setdefault(scorer_api_key_name, scorer_api_key)
 
         try:
             model_name = run.config.get("model", {}).get("model_name")
