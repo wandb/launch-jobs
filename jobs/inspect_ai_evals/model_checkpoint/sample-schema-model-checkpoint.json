@@ -11,7 +11,6 @@
       "items": {
         "type": "string",
         "enum": [
-          "agentharm_benign",
           "agentic_misalignment",
           "agie_aqua_rat",
           "agie_logiqa_en",
@@ -31,9 +30,6 @@
           "bbh",
           "bbeh",
           "bbeh_mini",
-          "bbq",
-          "bfcl",
-          "bbh",
           "bbq",
           "bold",
           "boolq",
