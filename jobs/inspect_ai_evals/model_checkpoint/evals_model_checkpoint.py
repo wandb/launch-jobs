@@ -51,7 +51,7 @@ def wait_for_vllm(
 
     raise TimeoutError(
         f"VLLM server failed to respond to health checks within {MAX_TIMEOUT} seconds."
-        f"Please verify that your model is vLLM compatible and fits within the 86GB memory limit. "
+        f" Please verify that your model is vLLM compatible and fits within the 86GB memory limit."
     )
 
 
@@ -103,10 +103,13 @@ def main():
                         load_tasks([f"{INSPECT_EVAL_PREFIX}{task}"])[0], model=model
                     )
                 ]
+                sample_limit = run.config.get("limit", None)
                 success, _ = eval_set(
                     tasks=loaded_task,
                     log_dir="logs/",
-                    limit=run.config.get("limit", 5),
+                    limit=sample_limit
+                    if sample_limit
+                    else None,  # evaluate all samples if sample_limit is set to 0
                     retry_attempts=1,
                     retry_wait=10,
                     log_dir_allow_dirty=True,
