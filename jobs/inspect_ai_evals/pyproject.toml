@@ -12,7 +12,7 @@ dependencies = [
     "black>=25.1.0",
     "huggingface-hub>=0.31.1",
     "inspect-ai>=0.3.69",
-    "inspect-evals[ifeval,sevenllm]",
+    "inspect-evals[bold,ifeval,sevenllm]",
     "inspect-wandb[weave]",
     "openai==2.0.0",
     "pandas>=2.2.3",
