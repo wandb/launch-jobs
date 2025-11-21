@@ -122,9 +122,9 @@
     "limit": {
       "type": "integer",
       "title": "Sample limit",
-      "description": "Maximum number of samples to evaluate for each task (e.g. 5, 10, 25, 50).",
+      "description": "Maximum number of samples to evaluate for each task. Leave blank or set to 0 to evaluate all samples.",
       "placeholder": "E.g. 5",
-      "exclusiveMinimum": 0
+      "minimum": 0
     },
     "model": {
       "type": "object",
