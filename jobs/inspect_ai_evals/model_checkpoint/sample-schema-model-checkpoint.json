@@ -138,13 +138,13 @@
     "hf_token": {
       "type": "string",
       "title": "Hugging Face token",
-      "description": "(Optional) Personal access token used to read gated datasets from Hugging Face.",
+      "description": "Personal access token used to read gated datasets from Hugging Face.",
       "format": "secret"
     },
     "scorer_api_key": {
       "type": "string",
       "title": "Scorer API key",
-      "description": "(Optional) Some evals use an OpenAI model as the default scorer.",
+      "description": "Some evals use an OpenAI model as the default scorer.",
       "format": "secret"
     }
   }
