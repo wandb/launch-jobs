@@ -117,7 +117,8 @@
           "wmdp_cyber",
           "xstest"
         ]
-      }
+      },
+      "required": true
     },
     "limit": {
       "type": "integer",
@@ -135,19 +136,22 @@
           "type": "string",
           "title": "Model name",
           "description": "Name of the model to use for the evaluation job.",
-          "placeholder": "openai/gpt-4o"
+          "placeholder": "openai/gpt-4o",
+          "required": true
         },
         "base_url": {
           "type": "string",
           "title": "Base URL",
           "description": "Base URL for the model to use for the evaluation job.",
-          "placeholder": "https://api.openai.com/v1"
+          "placeholder": "https://api.openai.com/v1",
+          "required": true
         },
         "api_key_var": {
           "type": "string",
           "title": "API key",
           "description": "API key for model access. Team secrets can be managed in your team settings by team admins.",
-          "format": "secret"
+          "format": "secret",
+          "required": true
         }
       }
     },
@@ -159,8 +163,8 @@
     },
     "hf_token": {
       "type": "string",
-      "title": "Hugging Face token",
-      "description": "Personal access token used to read gated datasets from Hugging Face.",
+      "title": "Hugging Face access token",
+      "description": "User access token used to read gated datasets from Hugging Face.",
       "format": "secret"
     },
     "scorer_api_key": {

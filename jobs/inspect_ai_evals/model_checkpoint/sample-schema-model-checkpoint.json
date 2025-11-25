@@ -114,7 +114,8 @@
           "wmdp_cyber",
           "xstest"
         ]
-      }
+      },
+      "required": true
     },
     "limit": {
       "type": "integer",
@@ -127,7 +128,8 @@
       "type": "string",
       "title": "Model artifact",
       "description": "Path to the model artifact to use for the evaluation job.",
-      "format": "artifact_path"
+      "format": "artifact_path",
+      "required": true
     },
     "create_leaderboard": {
       "type": "boolean",
@@ -137,8 +139,8 @@
     },
     "hf_token": {
       "type": "string",
-      "title": "Hugging Face token",
-      "description": "Personal access token used to read gated datasets from Hugging Face.",
+      "title": "Hugging Face access token",
+      "description": "User access token used to read gated datasets from Hugging Face.",
       "format": "secret"
     },
     "scorer_api_key": {
