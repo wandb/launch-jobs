@@ -15,6 +15,72 @@ from datasets.exceptions import DatasetNotFoundError
 INSPECT_EVAL_PREFIX = "inspect_evals/"
 
 
+def get_native_providers() -> set[str]:
+    try:
+        # Import the providers module to trigger registration
+        from inspect_ai.model._providers import providers  # noqa: F401
+        from inspect_ai._util.registry import registry_find, registry_info
+
+        # Find all registered modelapi items
+        modelapis = registry_find(lambda info: info.type == "modelapi")
+
+        # Extract provider names (strip the "inspect_ai/" prefix)
+        names = set()
+        for api in modelapis:
+            try:
+                info = registry_info(api)
+                provider_name = info.name.replace("inspect_ai/", "")
+                # Exclude internal/test providers
+                if provider_name not in ["mockllm", "none"]:
+                    names.add(provider_name)
+            except Exception:
+                continue
+
+        if names:
+            return names
+    except (ImportError, AttributeError):
+        pass
+
+    # Fallback to hardcoded list from https://inspect.aisi.org.uk/providers.html
+    return {
+        "anthropic",
+        "azureai",
+        "bedrock",
+        "cf",
+        "fireworks",
+        "google",
+        "groq",
+        "grok",
+        "hf",
+        "hf-inference-providers",
+        "llama-cpp-python",
+        "mistral",
+        "ollama",
+        "openai",
+        "openai-api",
+        "openrouter",
+        "perplexity",
+        "sambanova",
+        "sglang",
+        "together",
+        "transformer_lens",
+        "vllm",
+    }
+
+
+INSPECT_NATIVE_PROVIDERS = get_native_providers()
+
+
+def resolve_model_name(model_name: str):
+    parts = model_name.split("/", 1)
+    if len(parts) < 2:
+        raise ValueError("Hint: Model name must be in the format 'provider/model-name'")
+    provider = parts[0].lower()
+    if provider in INSPECT_NATIVE_PROVIDERS:
+        return model_name
+    return f"openai-api/{model_name}"
+
+
 def main():
     config = launch.load_wandb_config()
     with wandb.init(config=dict(config)) as run:
@@ -52,10 +118,23 @@ def main():
                 weave_client.finish()
                 return
 
-            model = get_model(model_name, api_key=api_key, base_url=base_url)
+            try:
+                resolved_model_name = resolve_model_name(model_name)
+            except ValueError as e:
+                wandb.termerror(f"Invalid model name: {model_name}. {e}")
+                weave_client.finish()
+                raise e
 
-            os.environ.setdefault("INSPECT_EVAL_MODEL", model_name)
-            os.environ.setdefault("INSPECT_GRADER_MODEL", model_name)
+            if resolved_model_name.startswith("openai-api/"):
+                provider = resolved_model_name.split("/")[1]
+                os.environ.setdefault(
+                    f"{provider.upper().replace('-', '_')}_BASE_URL", base_url
+                )
+
+            model = get_model(resolved_model_name, api_key=api_key, base_url=base_url)
+
+            os.environ.setdefault("INSPECT_EVAL_MODEL", resolved_model_name)
+            os.environ.setdefault("INSPECT_GRADER_MODEL", resolved_model_name)
         except Exception as e:
             wandb.termerror(f"Error initializing model: {e}")
             wandb.termlog(
