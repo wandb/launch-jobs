@@ -35,7 +35,18 @@ def load_benchmark_config(config_path: Optional[str] = None) -> dict[str, Any]:
         return yaml.safe_load(f)
 
 
-def _resolve_answer(row: dict, config: dict) -> str:
+def _get_choices(row: dict, config: dict) -> list[str]:
+    """
+    선택지를 가져옵니다.
+    choices_field: 데이터셋에서 가져올 필드명
+    """
+    choices_field = config.get("choices_field")
+    if choices_field is None:
+        raise ValueError("'choices_field' must be provided")
+    return row[choices_field]
+
+
+def _resolve_answer(row: dict, config: dict, choices: list[str]) -> str:
     """
     정답 필드를 letter (A, B, C, D, ...) 형식으로 변환합니다.
     """
@@ -54,7 +65,6 @@ def _resolve_answer(row: dict, config: dict) -> str:
         return str(answer_value).upper()
     elif answer_format == "text":
         # 텍스트 정답 -> choices에서 찾아서 letter로 변환
-        choices = row[config["choices_field"]]
         try:
             idx = choices.index(answer_value)
             return chr(ord('A') + idx)
@@ -80,7 +90,6 @@ def _iter_samples(config: dict, limit: Optional[int] = None):
     ds = load_dataset(**load_kwargs)
     
     question_field = config["question_field"]
-    choices_field = config["choices_field"]
     metadata_fields = config.get("metadata_fields", [])
     base_prompt = config.get("base_prompt", "")
     
@@ -89,8 +98,8 @@ def _iter_samples(config: dict, limit: Optional[int] = None):
             break
         
         question = row[question_field]
-        choices = row[choices_field]
-        target = _resolve_answer(row, config)
+        choices = _get_choices(row, config)
+        target = _resolve_answer(row, config, choices)
         
         # base_prompt가 있으면 질문 앞에 추가
         full_input = f"{base_prompt}{question}" if base_prompt else question
