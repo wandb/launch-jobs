@@ -2,9 +2,9 @@
   "overrides": {
     "run_config": {
       "tasks": ["custom/kmmlu_pro"],
-      "limit": 5,
+      "limit": 0,
       "model": {
-        "model_name": "openai/gpt-4o-mini",
+        "model_name": "openai/gpt-4o",
         "base_url": "https://api.openai.com/v1",
         "api_key_var": "secret://openai_api_key"
       },
