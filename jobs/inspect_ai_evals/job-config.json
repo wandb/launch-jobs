@@ -2,7 +2,7 @@
   "overrides": {
     "run_config": {
       "tasks": ["custom/benchmark"],
-      "limit": 5,
+      "limit": 0,
       "model": {
         "model_name": "openai/gpt-4o",
         "base_url": "https://api.openai.com/v1",
@@ -12,6 +12,7 @@
       "create_leaderboard": true,
       "custom_benchmark": {
         "dataset": "LGAI-EXAONE/KMMLU-Pro",
+        "base_prompt": "You are a helpful assistant that can answer questions about the following text: ",
         "split": "test",
         "question_field": "question",
         "choices_field": "options",
