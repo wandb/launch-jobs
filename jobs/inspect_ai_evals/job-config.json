@@ -2,13 +2,13 @@
   "overrides": {
     "run_config": {
       "tasks": ["custom/benchmark"],
-      "limit": 5,
+      "limit": 0,
       "model": {
         "model_name": "openai/gpt-4o",
         "base_url": "https://api.openai.com/v1",
-        "api_key_var": "secret://openai_api_key"
+        "api_key_var": "secret://OPENAI_API_KEY"
       },
-      "hf_token": "secret://hf_token",
+      "hf_token": "secret://HF_TOKEN",
       "create_leaderboard": true,
       "custom_benchmark": {
         "dataset": "LGAI-EXAONE/KMMLU-Pro",
