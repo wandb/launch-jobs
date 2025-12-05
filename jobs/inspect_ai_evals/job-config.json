@@ -9,7 +9,18 @@
         "api_key_var": "secret://openai_api_key"
       },
       "hf_token": "secret://hf_token",
-      "create_leaderboard": true
+      "create_leaderboard": true,
+      "custom_benchmark": {
+        "dataset": "LGAI-EXAONE/KMMLU-Pro",
+        "split": "test",
+        "question_field": "question",
+        "choices_field": "options",
+        "answer_field": "solution",
+        "answer_format": "index_1",
+        "task_name": "kmmlu_pro",
+        "language": "ko",
+        "source": "KMMLU-Pro"
+      }
     }
   },
   "resource_args": {
