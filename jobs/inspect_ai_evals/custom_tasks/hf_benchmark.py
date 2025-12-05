@@ -82,6 +82,7 @@ def _iter_samples(config: dict, limit: Optional[int] = None):
     question_field = config["question_field"]
     choices_field = config["choices_field"]
     metadata_fields = config.get("metadata_fields", [])
+    base_prompt = config.get("base_prompt", "")
     
     for i, row in enumerate(ds):
         if limit and limit > 0 and i >= limit:
@@ -91,6 +92,9 @@ def _iter_samples(config: dict, limit: Optional[int] = None):
         choices = row[choices_field]
         target = _resolve_answer(row, config)
         
+        # base_prompt가 있으면 질문 앞에 추가
+        full_input = f"{base_prompt}{question}" if base_prompt else question
+        
         # 메타데이터 수집
         metadata = {}
         for field in metadata_fields:
@@ -98,7 +102,7 @@ def _iter_samples(config: dict, limit: Optional[int] = None):
                 metadata[field] = row.get(field)
         
         yield Sample(
-            input=question,
+            input=full_input,
             choices=choices,
             target=target,
             id=i,

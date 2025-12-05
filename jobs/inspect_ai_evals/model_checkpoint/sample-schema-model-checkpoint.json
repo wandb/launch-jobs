@@ -216,6 +216,12 @@
           "title": "Source",
           "description": "Source name for metadata",
           "placeholder": "My Benchmark"
+        },
+        "base_prompt": {
+          "type": "string",
+          "title": "Base prompt",
+          "description": "Custom prompt to prepend to each question (e.g., instructions, few-shot examples)",
+          "placeholder": "다음 질문에 대해 가장 적절한 답을 선택하세요.\n\n"
         }
       }
     }
