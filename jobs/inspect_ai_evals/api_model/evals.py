@@ -85,10 +85,10 @@ def resolve_model_name(model_name: str):
 
 def _resolve_task_name(task: str) -> str:
     """
-    Normalize task name so both inspect_evals/*와 custom/*를 지원.
-    - inspect_evals/로 시작하면 그대로 사용
-    - custom/로 시작하면 접두사 제거
-    - 그 외는 기본적으로 inspect_evals/를 붙임(기존 호환)
+    Normalize task name to support both inspect_evals/* and custom/* prefixes.
+    - If starts with inspect_evals/, use as-is
+    - If starts with custom/, remove prefix
+    - Otherwise, prepend inspect_evals/ for backward compatibility
     """
     if task.startswith(INSPECT_EVAL_PREFIX):
         return task
@@ -164,8 +164,8 @@ def main():
             try:
                 task_name = _resolve_task_name(task)
                 if task.startswith(CUSTOM_PREFIX):
-                    # custom/ 접두사 태스크는 run_config의 custom_benchmark 설정 사용
-                    # 설정이 없으면 기본 custom_benchmark.yaml 파일 사용
+                    # Tasks with custom/ prefix use custom_benchmark settings from run_config
+                    # Falls back to default custom_benchmark.yaml file if not provided
                     benchmark_config = run.config.get("custom_benchmark")
                     loaded_task = [build_custom_task(
                         config=benchmark_config,

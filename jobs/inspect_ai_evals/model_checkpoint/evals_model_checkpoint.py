@@ -25,7 +25,7 @@ CUSTOM_PREFIX = "custom/"
 
 def _resolve_task_name(task: str) -> str:
     """
-    Normalize task name to support inspect_evals/*와 custom/*.
+    Normalize task name to support inspect_evals/* and custom/* prefixes.
     """
     if task.startswith(INSPECT_EVAL_PREFIX):
         return task
@@ -113,8 +113,8 @@ def main():
             try:
                 task_name = _resolve_task_name(task)
                 if task.startswith(CUSTOM_PREFIX):
-                    # custom/ 접두사 태스크는 run_config의 custom_benchmark 설정 사용
-                    # 설정이 없으면 기본 custom_benchmark.yaml 파일 사용
+                    # Tasks with custom/ prefix use custom_benchmark settings from run_config
+                    # Falls back to default custom_benchmark.yaml file if not provided
                     benchmark_config = run.config.get("custom_benchmark")
                     loaded_task = [build_custom_task(
                         config=benchmark_config,
