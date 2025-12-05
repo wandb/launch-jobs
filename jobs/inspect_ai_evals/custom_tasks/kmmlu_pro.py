@@ -24,7 +24,8 @@ def _iter_samples(limit: Optional[int] = None):
         options = row["options"]
         # dataset uses 1-based string index for the correct option
         sol_idx = int(row["solution"]) - 1
-        target = options[sol_idx]
+        # choice() scorer expects letter target (A, B, C, D, ...)
+        target = chr(ord('A') + sol_idx)
         yield Sample(
             input=question,
             choices=options,

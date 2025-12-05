@@ -1,0 +1,20 @@
+{
+  "overrides": {
+    "run_config": {
+      "tasks": ["custom/kmmlu_pro"],
+      "limit": 5,
+      "model": {
+        "model_name": "openai/gpt-4o-mini",
+        "base_url": "https://api.openai.com/v1",
+        "api_key_var": "secret://openai_api_key"
+      },
+      "hf_token": "secret://hf_token",
+      "create_leaderboard": true
+    }
+  },
+  "resource_args": {
+    "local-container": {
+      "env": ["OPENAI_API_KEY", "HF_TOKEN"]
+    }
+  }
+}
