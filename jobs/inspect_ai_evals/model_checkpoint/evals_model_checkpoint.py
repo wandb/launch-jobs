@@ -5,6 +5,7 @@ import weave
 from inspect_ai import eval_set
 from inspect_ai._eval.loader import load_tasks
 from inspect_ai._eval.task import task_with
+from custom_tasks.kmmlu_pro import build_kmmlu_task
 from inspect_ai.model import get_model
 from wandb.sdk import launch
 
@@ -19,6 +20,18 @@ import re
 MAX_TIMEOUT = 900  # 15 minutes
 VLLM_API_KEY = "token-abc123"  # This should match the API key set on the vLLM server.
 INSPECT_EVAL_PREFIX = "inspect_evals/"
+CUSTOM_PREFIX = "custom/"
+
+
+def _resolve_task_name(task: str) -> str:
+    """
+    Normalize task name to support inspect_evals/*와 custom/*.
+    """
+    if task.startswith(INSPECT_EVAL_PREFIX):
+        return task
+    if task.startswith(CUSTOM_PREFIX):
+        return task.replace(CUSTOM_PREFIX, "")
+    return f"{INSPECT_EVAL_PREFIX}{task}"
 
 
 def make_k8s_label_safe(value: str) -> str:
@@ -98,11 +111,12 @@ def main():
         failed_tasks = []
         for task in run.config["tasks"]:
             try:
-                loaded_task = [
-                    task_with(
-                        load_tasks([f"{INSPECT_EVAL_PREFIX}{task}"])[0], model=model
-                    )
-                ]
+                task_name = _resolve_task_name(task)
+                if task.startswith(CUSTOM_PREFIX):
+                    loaded_task = [build_kmmlu_task(task_name, limit=run.config.get("limit"))]
+                else:
+                    loaded = load_tasks([task_name])[0]
+                    loaded_task = [task_with(loaded, model=model)]
                 sample_limit = run.config.get("limit", None)
                 success, _ = eval_set(
                     tasks=loaded_task,

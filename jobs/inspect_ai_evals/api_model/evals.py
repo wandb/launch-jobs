@@ -5,6 +5,7 @@ import weave
 from inspect_ai import eval_set
 from inspect_ai._eval.loader import load_tasks
 from inspect_ai._eval.task import task_with
+from custom_tasks.kmmlu_pro import build_kmmlu_task
 from inspect_ai.model import get_model
 from wandb.sdk import launch
 
@@ -13,6 +14,7 @@ from launch_secrets import get_launch_secret_from_env
 from datasets.exceptions import DatasetNotFoundError
 
 INSPECT_EVAL_PREFIX = "inspect_evals/"
+CUSTOM_PREFIX = "custom/"
 
 
 def get_native_providers() -> set[str]:
@@ -81,6 +83,20 @@ def resolve_model_name(model_name: str):
     return f"openai-api/{model_name}"
 
 
+def _resolve_task_name(task: str) -> str:
+    """
+    Normalize task name so both inspect_evals/*와 custom/*를 지원.
+    - inspect_evals/로 시작하면 그대로 사용
+    - custom/로 시작하면 접두사 제거
+    - 그 외는 기본적으로 inspect_evals/를 붙임(기존 호환)
+    """
+    if task.startswith(INSPECT_EVAL_PREFIX):
+        return task
+    if task.startswith(CUSTOM_PREFIX):
+        return task.replace(CUSTOM_PREFIX, "")
+    return f"{INSPECT_EVAL_PREFIX}{task}"
+
+
 def main():
     config = launch.load_wandb_config()
     with wandb.init(config=dict(config)) as run:
@@ -146,11 +162,12 @@ def main():
         failed_tasks = []
         for task in run.config.get("tasks", []):
             try:
-                loaded_task = [
-                    task_with(
-                        load_tasks([f"{INSPECT_EVAL_PREFIX}{task}"])[0], model=model
-                    )
-                ]
+                task_name = _resolve_task_name(task)
+                if task.startswith(CUSTOM_PREFIX):
+                    loaded_task = [build_kmmlu_task(task_name, limit=run.config.get("limit"))]
+                else:
+                    loaded = load_tasks([task_name])[0]
+                    loaded_task = [task_with(loaded, model=model)]
                 sample_limit = run.config.get("limit", None)
                 success, _ = eval_set(
                     tasks=loaded_task,

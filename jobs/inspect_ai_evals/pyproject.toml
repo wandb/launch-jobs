@@ -11,6 +11,7 @@ dependencies = [
     "anthropic>=0.64.0",
     "black>=25.1.0",
     "huggingface-hub>=0.31.1",
+    "datasets>=2.20.0",
     "inspect-ai>=0.3.69",
     "inspect-evals[bold,ifeval,sevenllm]",
     "inspect-wandb[weave]",

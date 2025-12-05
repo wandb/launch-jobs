@@ -115,7 +115,8 @@
           "wmdp_bio",
           "wmdp_chem",
           "wmdp_cyber",
-          "xstest"
+          "xstest",
+          "custom/kmmlu_pro"
         ]
       },
       "required": true

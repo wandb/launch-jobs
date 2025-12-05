@@ -11,6 +11,8 @@ WORKDIR /workspace
 
 # Copy shared files from parent directory
 COPY pyproject.toml launch_secrets.py leaderboard.py ./
+# Copy custom tasks (e.g., KMMLU-Pro)
+COPY custom_tasks/ ./custom_tasks/
 
 # Copy job-specific files from subdirectory
 COPY api_model/ ./
