@@ -5,7 +5,7 @@ import weave
 from inspect_ai import eval_set
 from inspect_ai._eval.loader import load_tasks
 from inspect_ai._eval.task import task_with
-from custom_tasks.kmmlu_pro import build_kmmlu_task
+from custom_tasks.hf_benchmark import build_custom_task
 from inspect_ai.model import get_model
 from wandb.sdk import launch
 
@@ -113,7 +113,8 @@ def main():
             try:
                 task_name = _resolve_task_name(task)
                 if task.startswith(CUSTOM_PREFIX):
-                    loaded_task = [build_kmmlu_task(task_name, limit=run.config.get("limit"))]
+                    # custom/ 접두사 태스크는 custom_benchmark.yaml 설정 사용
+                    loaded_task = [build_custom_task(limit=run.config.get("limit"))]
                 else:
                     loaded = load_tasks([task_name])[0]
                     loaded_task = [task_with(loaded, model=model)]

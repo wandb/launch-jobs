@@ -113,7 +113,7 @@
           "wmdp_chem",
           "wmdp_cyber",
           "xstest",
-          "custom/kmmlu_pro"
+          "custom/benchmark"
         ]
       },
       "required": true

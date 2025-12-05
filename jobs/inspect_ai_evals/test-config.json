@@ -1,7 +1,7 @@
 {
   "overrides": {
     "run_config": {
-      "tasks": ["custom/kmmlu_pro"],
+      "tasks": ["custom/benchmark"],
       "limit": 0,
       "model": {
         "model_name": "openai/gpt-4o",

@@ -1,0 +1,33 @@
+# Custom Benchmark Configuration
+# 이 파일을 수정하여 다른 HF 데이터셋 기반 벤치마크를 실행할 수 있습니다.
+
+# Hugging Face 데이터셋 경로
+dataset: "LGAI-EXAONE/KMMLU-Pro"
+
+# 데이터셋 subset 이름 (없으면 생략)
+# name: "hellaswag"
+
+# 데이터셋 split
+split: "test"
+
+# 필드 매핑
+question_field: "question"
+choices_field: "options"
+answer_field: "solution"
+
+# 정답 형식: "index_0" (0-based), "index_1" (1-based), "letter" (A,B,C,D), "text"
+answer_format: "index_1"
+
+# 메타데이터로 포함할 필드들 (선택적)
+metadata_fields:
+  - "license_name"
+  - "subject"
+  - "year"
+  - "round"
+  - "session"
+
+# 벤치마크 메타 정보
+task_name: "kmmlu_pro"
+language: "ko"
+source: "KMMLU-Pro"
+
