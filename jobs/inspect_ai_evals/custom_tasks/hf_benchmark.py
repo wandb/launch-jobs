@@ -1,7 +1,7 @@
 """
 일반화된 Hugging Face 데이터셋 기반 벤치마크 로더.
 
-custom_benchmark.yaml 설정 파일을 읽어서 Inspect AI Task를 생성합니다.
+run_config 또는 custom_benchmark.yaml 설정 파일을 읽어서 Inspect AI Task를 생성합니다.
 """
 
 import os
@@ -107,20 +107,24 @@ def _iter_samples(config: dict, limit: Optional[int] = None):
 
 
 def build_custom_task(
+    config: Optional[dict[str, Any]] = None,
     config_path: Optional[str] = None,
     limit: Optional[int] = None
 ) -> Task:
     """
-    설정 파일을 기반으로 Inspect AI Task를 생성합니다.
+    설정을 기반으로 Inspect AI Task를 생성합니다.
     
     Args:
-        config_path: 설정 파일 경로. None이면 기본 custom_benchmark.yaml 사용.
+        config: 벤치마크 설정 딕셔너리. 제공되면 config_path보다 우선.
+        config_path: 설정 파일 경로. config가 None이고 이것도 None이면 기본 custom_benchmark.yaml 사용.
         limit: 샘플 수 제한 (0 또는 None이면 전체 사용).
     
     Returns:
         Inspect AI Task
     """
-    config = load_benchmark_config(config_path)
+    # config가 직접 제공되면 사용, 아니면 파일에서 로드
+    if config is None:
+        config = load_benchmark_config(config_path)
     
     samples = list(_iter_samples(config, limit=limit))
     
@@ -138,4 +142,3 @@ def build_custom_task(
             "dataset": config["dataset"],
         },
     )
-

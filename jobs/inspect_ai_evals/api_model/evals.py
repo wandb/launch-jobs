@@ -164,8 +164,13 @@ def main():
             try:
                 task_name = _resolve_task_name(task)
                 if task.startswith(CUSTOM_PREFIX):
-                    # custom/ 접두사 태스크는 custom_benchmark.yaml 설정 사용
-                    loaded_task = [build_custom_task(limit=run.config.get("limit"))]
+                    # custom/ 접두사 태스크는 run_config의 custom_benchmark 설정 사용
+                    # 설정이 없으면 기본 custom_benchmark.yaml 파일 사용
+                    benchmark_config = run.config.get("custom_benchmark")
+                    loaded_task = [build_custom_task(
+                        config=benchmark_config,
+                        limit=run.config.get("limit")
+                    )]
                 else:
                     loaded = load_tasks([task_name])[0]
                     loaded_task = [task_with(loaded, model=model)]

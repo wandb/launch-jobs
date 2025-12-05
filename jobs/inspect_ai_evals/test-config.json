@@ -2,7 +2,7 @@
   "overrides": {
     "run_config": {
       "tasks": ["custom/benchmark"],
-      "limit": 0,
+      "limit": 5,
       "model": {
         "model_name": "openai/gpt-4o",
         "base_url": "https://api.openai.com/v1",

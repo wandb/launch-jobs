@@ -149,6 +149,75 @@
       "title": "Scorer API key",
       "description": "Some evals use an OpenAI model as the default scorer.",
       "format": "secret"
+    },
+    "custom_benchmark": {
+      "type": "object",
+      "title": "Custom Benchmark Settings",
+      "description": "Settings for custom/benchmark task. Only used when 'custom/benchmark' is selected in tasks.",
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "title": "Dataset",
+          "description": "Hugging Face dataset path (e.g., 'LGAI-EXAONE/KMMLU-Pro')",
+          "placeholder": "LGAI-EXAONE/KMMLU-Pro"
+        },
+        "name": {
+          "type": "string",
+          "title": "Dataset subset",
+          "description": "Dataset subset name (optional, e.g., 'hellaswag')",
+          "placeholder": "Leave empty if not needed"
+        },
+        "split": {
+          "type": "string",
+          "title": "Split",
+          "description": "Dataset split to use",
+          "default": "test",
+          "enum": ["train", "test", "validation"]
+        },
+        "question_field": {
+          "type": "string",
+          "title": "Question field",
+          "description": "Field name for the question/prompt",
+          "placeholder": "question"
+        },
+        "choices_field": {
+          "type": "string",
+          "title": "Choices field",
+          "description": "Field name for the answer choices (list)",
+          "placeholder": "options"
+        },
+        "answer_field": {
+          "type": "string",
+          "title": "Answer field",
+          "description": "Field name for the correct answer",
+          "placeholder": "solution"
+        },
+        "answer_format": {
+          "type": "string",
+          "title": "Answer format",
+          "description": "Format of the answer field",
+          "default": "index_0",
+          "enum": ["index_0", "index_1", "letter", "text"]
+        },
+        "task_name": {
+          "type": "string",
+          "title": "Task name",
+          "description": "Name for this benchmark task",
+          "placeholder": "my_benchmark"
+        },
+        "language": {
+          "type": "string",
+          "title": "Language",
+          "description": "Language code (e.g., 'en', 'ko')",
+          "placeholder": "en"
+        },
+        "source": {
+          "type": "string",
+          "title": "Source",
+          "description": "Source name for metadata",
+          "placeholder": "My Benchmark"
+        }
+      }
     }
   }
 }
