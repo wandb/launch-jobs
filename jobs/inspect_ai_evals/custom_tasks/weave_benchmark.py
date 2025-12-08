@@ -20,11 +20,11 @@ def _get_choices(row: dict, config: dict) -> list[str]:
     """
     choices_field = config.get("choices_field")
     if choices_field is None:
-        raise ValueError("'choices_field' must be provided")
+        return None
     return row[choices_field]
 
 
-def _resolve_answer(row: dict, config: dict, choices: list[str]) -> str:
+def _resolve_answer(row: dict, config: dict, choices: Optional[list[str]] = None) -> str:
     """
     Convert answer field to letter format (A, B, C, D, ...).
     """
@@ -41,13 +41,6 @@ def _resolve_answer(row: dict, config: dict, choices: list[str]) -> str:
     elif answer_format == "letter":
         # Already in letter format (A, B, C, D)
         return str(answer_value).upper()
-    elif answer_format == "text":
-        # Text answer -> find in choices and convert to letter
-        try:
-            idx = choices.index(answer_value)
-            return chr(ord('A') + idx)
-        except ValueError:
-            raise ValueError(f"Answer '{answer_value}' not found in choices: {choices}")
     else:
         raise ValueError(f"Unknown answer_format: {answer_format}")
 
