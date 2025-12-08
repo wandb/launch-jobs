@@ -168,7 +168,7 @@ def main():
                 task_name = _resolve_task_name(task)
                 if task == CUSTOM_WEAVE_TASK:
                     # custom/weave: Use Weave dataset
-                    custom_benchmark = run.config.get("weave_benchmark")
+                    custom_benchmark = run.config.get("custom_benchmark")
                     loaded_task = [build_weave_task(
                         config=custom_benchmark,
                         limit=run.config.get("limit")
