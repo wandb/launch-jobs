@@ -97,7 +97,7 @@ def _iter_samples(config: dict, limit: Optional[int] = None):
         )
 
 
-def build_custom_task(
+def build_hf_task(
     config: dict[str, Any],
     limit: Optional[int] = None
 ) -> Task:
