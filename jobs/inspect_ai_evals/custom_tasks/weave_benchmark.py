@@ -18,10 +18,7 @@ def _get_choices(row: dict, config: dict) -> list[str]:
     Get choices from the dataset row.
     choices_field: Field name to extract choices from dataset
     """
-    choices_field = config.get("choices_field")
-    if choices_field is None:
-        return None
-    return row[choices_field]
+    return config.get("choices_field", None)
 
 
 def _resolve_answer(row: dict, config: dict, choices: Optional[list[str]] = None) -> str:
