@@ -1,17 +1,16 @@
 {
   "overrides": {
     "run_config": {
-      "tasks": ["custom/benchmark"],
+      "tasks": ["custom/weave"],
       "limit": 0,
       "model": {
         "model_name": "openai/gpt-4o",
         "base_url": "https://api.openai.com/v1",
         "api_key_var": "secret://OPENAI_API_KEY"
       },
-      "hf_token": "secret://HF_TOKEN",
       "create_leaderboard": true,
       "custom_benchmark": {
-        "dataset": "LGAI-EXAONE/KMMLU-Pro",
+        "dataset": "weave:///wandb-smle/custom-evaluation-job/object/LGAI-EXAONE-KMMLU-Pro:6K0XZPDUwwosWTsqHZ2KZ2H81GakgJk8Q3oa5zpYY7M",
         "base_prompt": "You are a helpful assistant that can answer questions about the following text: ",
         "split": "test",
         "question_field": "question",

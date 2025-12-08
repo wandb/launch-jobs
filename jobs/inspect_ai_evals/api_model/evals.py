@@ -5,7 +5,8 @@ import weave
 from inspect_ai import eval_set
 from inspect_ai._eval.loader import load_tasks
 from inspect_ai._eval.task import task_with
-from custom_tasks.hf_benchmark import build_custom_task
+from custom_tasks.hf_benchmark import build_hf_task
+from custom_tasks.weave_benchmark import build_weave_task
 from inspect_ai.model import get_model
 from wandb.sdk import launch
 
@@ -15,6 +16,8 @@ from datasets.exceptions import DatasetNotFoundError
 
 INSPECT_EVAL_PREFIX = "inspect_evals/"
 CUSTOM_PREFIX = "custom/"
+CUSTOM_HF_TASK = "custom/huggingface"
+CUSTOM_WEAVE_TASK = "custom/weave"
 
 
 def get_native_providers() -> set[str]:
@@ -163,11 +166,17 @@ def main():
         for task in run.config.get("tasks", []):
             try:
                 task_name = _resolve_task_name(task)
-                if task.startswith(CUSTOM_PREFIX):
-                    # Tasks with custom/ prefix use custom_benchmark settings from run_config
-                    # Falls back to default custom_benchmark.yaml file if not provided
+                if task == CUSTOM_WEAVE_TASK:
+                    # custom/weave: Use Weave dataset
+                    custom_benchmark = run.config.get("weave_benchmark")
+                    loaded_task = [build_weave_task(
+                        config=custom_benchmark,
+                        limit=run.config.get("limit")
+                    )]
+                elif task == CUSTOM_HF_TASK or task.startswith(CUSTOM_PREFIX):
+                    # custom/benchmark: Use HuggingFace dataset
                     benchmark_config = run.config.get("custom_benchmark")
-                    loaded_task = [build_custom_task(
+                    loaded_task = [build_hf_task(
                         config=benchmark_config,
                         limit=run.config.get("limit")
                     )]

@@ -5,7 +5,7 @@ import weave
 from inspect_ai import eval_set
 from inspect_ai._eval.loader import load_tasks
 from inspect_ai._eval.task import task_with
-from custom_tasks.hf_benchmark import build_custom_task
+from custom_tasks.hf_benchmark import build_hf_task
 from inspect_ai.model import get_model
 from wandb.sdk import launch
 
@@ -21,6 +21,7 @@ MAX_TIMEOUT = 900  # 15 minutes
 VLLM_API_KEY = "token-abc123"  # This should match the API key set on the vLLM server.
 INSPECT_EVAL_PREFIX = "inspect_evals/"
 CUSTOM_PREFIX = "custom/"
+CUSTOM_HF_TASK = "custom/huggingface"
 
 
 def _resolve_task_name(task: str) -> str:
@@ -112,11 +113,11 @@ def main():
         for task in run.config["tasks"]:
             try:
                 task_name = _resolve_task_name(task)
-                if task.startswith(CUSTOM_PREFIX):
+                if task == CUSTOM_HF_TASK or task.startswith(CUSTOM_PREFIX):
                     # Tasks with custom/ prefix use custom_benchmark settings from run_config
                     # Falls back to default custom_benchmark.yaml file if not provided
                     benchmark_config = run.config.get("custom_benchmark")
-                    loaded_task = [build_custom_task(
+                    loaded_task = [build_hf_task(
                         config=benchmark_config,
                         limit=run.config.get("limit")
                     )]
