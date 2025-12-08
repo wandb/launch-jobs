@@ -67,6 +67,53 @@ def _row_to_dict(row: Any) -> dict:
         raise ValueError(f"Cannot convert row of type {type(row)} to dict")
 
 
+def _format_input_with_choices(
+    question: str,
+    choices: list[str],
+    base_prompt: str = "",
+) -> str:
+    """
+    Format input with question and labeled choices for multiple choice evaluation.
+    
+    Args:
+        question: The question text
+        choices: List of answer choices
+        base_prompt: Optional prompt prefix
+    
+    Returns:
+        Formatted input string with question and choices
+    
+    Example output:
+        다음 질문에 답하세요.
+        
+        대한민국의 수도는?
+        
+        A. 서울
+        B. 부산
+        C. 대전
+        D. 인천
+    """
+    # Format each choice with letter prefix (A, B, C, D, E, ...)
+    formatted_choices = []
+    for i, choice_text in enumerate(choices):
+        letter = chr(ord('A') + i)
+        formatted_choices.append(f"{letter}. {choice_text}")
+    
+    choices_text = "\n".join(formatted_choices)
+    
+    # Build full input
+    parts = []
+    if base_prompt:
+        parts.append(base_prompt.strip())
+        parts.append("")  # Empty line after base_prompt
+    
+    parts.append(question)
+    parts.append("")  # Empty line before choices
+    parts.append(choices_text)
+    
+    return "\n".join(parts)
+
+
 def _load_weave_dataset(config: dict) -> list[dict]:
     """
     Load dataset from Weave.
@@ -122,8 +169,12 @@ def _iter_samples(config: dict, limit: Optional[int] = None) -> Iterator[Sample]
         choices = _get_choices(row, config)
         target = _resolve_answer(row, config, choices)
         
-        # Prepend base_prompt to question if provided
-        full_input = f"{base_prompt}{question}" if base_prompt else question
+        # Format input with question AND choices (A. B. C. D. format)
+        full_input = _format_input_with_choices(
+            question=question,
+            choices=choices,
+            base_prompt=base_prompt,
+        )
         
         # Collect metadata
         metadata = {}
