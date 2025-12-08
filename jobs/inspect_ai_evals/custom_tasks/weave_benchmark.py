@@ -188,7 +188,7 @@ def build_weave_task(
         )
     
     # Validate required fields
-    required_fields = ["dataset", "question_field", "choices_field", "answer_field"]
+    required_fields = ["dataset", "question_field", "answer_field"]
     missing_fields = [f for f in required_fields if f not in config]
     if missing_fields:
         raise ValueError(f"Missing required fields in weave_benchmark config: {missing_fields}")
