@@ -18,7 +18,10 @@ def _get_choices(row: dict, config: dict) -> list[str]:
     Get choices from the dataset row.
     choices_field: Field name to extract choices from dataset
     """
-    return config.get("choices_field", None)
+    choices_field = config.get("choices_field")
+    if choices_field is None:
+        raise ValueError("'choices_field' must be provided")
+    return row[choices_field]
 
 
 def _resolve_answer(row: dict, config: dict, choices: list[str]) -> str:
@@ -153,3 +156,4 @@ def build_hf_task(
             "dataset": config["dataset"],
         },
     )
+
