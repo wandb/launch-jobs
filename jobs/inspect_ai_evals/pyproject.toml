@@ -21,7 +21,7 @@ dependencies = [
     "pydantic-core==2.33.2",
     "pydantic-settings>=2.10.1",
     "sympy>=1.14.0",
-    "wandb>=0.19.11",
+    "wandb==0.22.3",  # pinned to prevent api key validation issues when using an internal jwt as api key
     "weave>=0.51.59",
     "google-genai",
     "rouge",
