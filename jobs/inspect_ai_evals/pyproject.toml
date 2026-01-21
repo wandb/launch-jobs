@@ -29,8 +29,6 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-inspect-evals = { git = "https://github.com/UKGovernmentBEIS/inspect_evals" }
-inspect-wandb = { git = "https://github.com/parambharat/inspect_wandb.git" }
 instruction-following-eval = { git = "https://github.com/josejg/instruction_following_eval.git" }
 
 [tool.inspect-wandb.weave]
