@@ -9,9 +9,11 @@ authors = [
 requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.64.0",
+    "aviato",
     "black>=25.1.0",
     "huggingface-hub>=0.31.1",
     "inspect-ai>=0.3.69",
+    "inspect-aviato-sandbox",
     "inspect-evals[bold,ifeval,sevenllm]",
     "inspect-wandb[weave]",
     "openai>=2.8.0",
@@ -29,12 +31,17 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-inspect-evals = { git = "https://github.com/UKGovernmentBEIS/inspect_evals" }
+aviato = { path = "../../../aviato-client", editable = true }
+inspect-aviato-sandbox = { path = "../../../inspect_aviato_sandbox", editable = true }
+inspect-evals = { path = "../../../inspect_evals", editable = true }
 inspect-wandb = { git = "https://github.com/parambharat/inspect_wandb.git" }
 instruction-following-eval = { git = "https://github.com/josejg/instruction_following_eval.git" }
 
+[[tool.uv.index]]
+url = "https://buf.build/gen/python"
+
 [tool.inspect-wandb.weave]
-enabled = true
+enabled = false
 
 [tool.inspect-wandb.models]
 enabled = false
