@@ -12,7 +12,8 @@ dependencies = [
     "black>=25.1.0",
     "huggingface-hub>=0.31.1",
     "inspect-ai>=0.3.69",
-    "inspect-evals[bold,ifeval,sevenllm]",
+    "inspect-aviato-sandbox",
+    "inspect-evals[bold,ifeval,sevenllm,swebench]",
     "inspect-wandb[weave]",
     "openai>=2.8.0",
     "pandas>=2.2.3",
@@ -21,7 +22,7 @@ dependencies = [
     "pydantic-core==2.33.2",
     "pydantic-settings>=2.10.1",
     "sympy>=1.14.0",
-    "wandb==0.22.3",  # pinned to prevent api key validation issues when using an internal jwt as api key
+    "wandb>=0.22.0,<0.23",
     "weave>=0.51.59",
     "google-genai",
     "rouge",
@@ -29,9 +30,14 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-inspect-evals = { git = "https://github.com/UKGovernmentBEIS/inspect_evals" }
+inspect-aviato-sandbox = { path = "../../../inspect_aviato_sandbox", editable = true }
+inspect-evals = { path = "../../../inspect_evals", editable = true }
+# inspect-evals = { git = "https://github.com/parambharat/inspect_evals.git" }
 inspect-wandb = { git = "https://github.com/parambharat/inspect_wandb.git" }
 instruction-following-eval = { git = "https://github.com/josejg/instruction_following_eval.git" }
+
+[[tool.uv.index]]
+url = "https://buf.build/gen/python"
 
 [tool.inspect-wandb.weave]
 enabled = true
