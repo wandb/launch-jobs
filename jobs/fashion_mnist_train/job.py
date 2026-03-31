@@ -4,17 +4,38 @@ import argparse
 from typing import Any, Optional
 
 import matplotlib.pyplot as plt
-import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Subset
+from torchvision import datasets, transforms
 import wandb
-# To load the mnist data
-from keras.datasets import fashion_mnist
-# importing various types of hidden layers
-from tensorflow.keras.layers import Conv2D, Dense, Flatten, MaxPooling2D
-from tensorflow.keras.models import Sequential
-# Adam legacy for m1/m2 macs
-from tensorflow.keras.optimizers import Adam
-from wandb.integration.keras import WandbMetricsLogger
 
+
+LABELS = [
+    "t_shirt",
+    "trouser",
+    "pullover",
+    "dress",
+    "coat",
+    "sandal",
+    "shirt",
+    "sneaker",
+    "bag",
+    "ankle_boots",
+]
+
+
+def model_arch() -> nn.Module:
+    """Define the architecture of the model"""
+    return nn.Sequential(
+        nn.Conv2d(1, 64, kernel_size=5, padding=2), nn.ReLU(), nn.MaxPool2d(2),
+        nn.Conv2d(64, 128, kernel_size=5, padding=2), nn.ReLU(), nn.MaxPool2d(2),
+        nn.Conv2d(128, 256, kernel_size=5, padding=2), nn.ReLU(), nn.MaxPool2d(2),
+        nn.Flatten(),
+        nn.Linear(256 * 3 * 3, 256), nn.ReLU(),
+        nn.Linear(256, 10),
+    )
 
 
 def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
@@ -24,118 +45,68 @@ def train(project: Optional[str], entity: Optional[str], **kwargs: Any):
         "steps_per_epoch": 10,
     })
 
-    # get config, could be set from sweep scheduler
     train_config = run.config
-    # get training parameters from config
     epochs = train_config.get("epochs", 10)
     learning_rate = train_config.get("learning_rate", 0.001)
     steps_per_epoch = train_config.get("steps_per_epoch", 10)
 
-    # load data
-    (train_X, train_y), (test_X, test_y) = fashion_mnist.load_data()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Print the dimensions of the dataset
-    print("Train: X = ", train_X.shape)
-    print("Test: X = ", test_X.shape)
+    transform = transforms.Compose([transforms.ToTensor()])
+    train_dataset = datasets.FashionMNIST(root="/tmp/data", train=True, download=True, transform=transform)
+    test_dataset = datasets.FashionMNIST(root="/tmp/data", train=False, download=True, transform=transform)
 
-    # Lets cut this down for the sake of time
-    train_X = train_X[:1200]
-    train_y = train_y[:1200]
+    # Cut down for speed (match original 1200 samples)
+    train_dataset = Subset(train_dataset, range(1200))
 
     # log some images
     for i in range(1, 10):
-        # Create a 3x3 grid and place the
-        # image in ith position of grid
         plt.subplot(3, 3, i)
-        plt.imshow(train_X[i], cmap=plt.get_cmap("gray"))
-    # Log plot
+        img, _ = train_dataset[i]
+        plt.imshow(img.squeeze(), cmap=plt.get_cmap("gray"))
     wandb.log({"chart": plt})
+    plt.clf()
 
-    # Reshaping the arrays
-    train_X = np.expand_dims(train_X, -1).astype(np.float32)
-    test_X = np.expand_dims(test_X, -1)
+    train_loader = DataLoader(train_dataset, batch_size=max(1, 1200 // steps_per_epoch), shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=9, shuffle=False)
 
-    # load model
-    model = model_arch()
-    model.compile(
-        optimizer=Adam(learning_rate=learning_rate),
-        loss="sparse_categorical_crossentropy",
-        metrics=["sparse_categorical_accuracy"],
-    )
-    model.summary()
+    model = model_arch().to(device)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    criterion = nn.CrossEntropyLoss()
 
-    model.fit(
-        train_X,
-        train_y.astype(np.float32),
-        epochs=epochs,
-        steps_per_epoch=steps_per_epoch,
-        validation_split=0.33,
-        callbacks=[
-            WandbMetricsLogger(),
-        ],
-    )
+    for epoch in range(epochs):
+        model.train()
+        total_loss, correct, total = 0.0, 0, 0
+        for step, (X, y) in enumerate(train_loader):
+            if step >= steps_per_epoch:
+                break
+            X, y = X.to(device), y.to(device)
+            optimizer.zero_grad()
+            out = model(X)
+            loss = criterion(out, y)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            correct += (out.argmax(1) == y).sum().item()
+            total += len(y)
 
-    # do some manual testing
+        acc = correct / total if total > 0 else 0
+        wandb.log({"epoch": epoch + 1, "loss": total_loss / steps_per_epoch, "sparse_categorical_accuracy": acc})
 
-    labels = [
-        "t_shirt",
-        "trouser",
-        "pullover",
-        "dress",
-        "coat",
-        "sandal",
-        "shirt",
-        "sneaker",
-        "bag",
-        "ankle_boots",
-    ]
-    # Make a prediction
-    predictions = model.predict(test_X[:9])
-    labels = [labels[np.argmax(pred)] for pred in predictions]
+    # Predictions on first 9 test samples
+    model.eval()
+    test_images, _ = next(iter(test_loader))
+    with torch.no_grad():
+        preds = model(test_images.to(device)).argmax(1).cpu()
+    pred_labels = [LABELS[p] for p in preds]
 
-    for i in range(0, len(predictions)):
-        # Create a 3x3 grid and place the
-        # image in ith position of grid
+    for i in range(9):
         plt.subplot(3, 3, i + 1)
-        plt.imshow(train_X[i], cmap=plt.get_cmap("gray"))
-        plt.title(f"Pred: {labels[i]}")
-    # Log plot
+        plt.imshow(test_images[i].squeeze(), cmap=plt.get_cmap("gray"))
+        plt.title(f"Pred: {pred_labels[i]}")
     wandb.log({"prediction-chart": plt})
 
-# Code from: https://www.geeksforgeeks.org/fashion-mnist-with-python-keras-and-deep-learning/
-def model_arch():
-    """Define the architecture of the model"""
-    models = Sequential()
-
-    # We are learning 64
-    # filters with a kernel size of 5x5
-    models.add(
-        Conv2D(64, (5, 5), padding="same", activation="relu", input_shape=(28, 28, 1))
-    )
-
-    # Max pooling will reduce the
-    # size with a kernel size of 2x2
-    models.add(MaxPooling2D(pool_size=(2, 2)))
-    models.add(Conv2D(128, (5, 5), padding="same", activation="relu"))
-
-    models.add(MaxPooling2D(pool_size=(2, 2)))
-    models.add(Conv2D(256, (5, 5), padding="same", activation="relu"))
-
-    models.add(MaxPooling2D(pool_size=(2, 2)))
-
-    # Once the convolutional and pooling
-    # operations are done the layer
-    # is flattened and fully connected layers
-    # are added
-    models.add(Flatten())
-    models.add(Dense(256, activation="relu"))
-
-    # Finally as there are total 10
-    # classes to be added a FCC layer of
-    # 10 is created with a softmax activation
-    # function
-    models.add(Dense(10, activation="softmax"))
-    return models
+    wandb.finish()
 
 
 def main():

@@ -1,4 +1,4 @@
 wandb
-keras
-tensorflow
+torch
+torchvision
 matplotlib
