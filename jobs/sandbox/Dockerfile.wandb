@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1.4
+FROM python:3.11-slim
+
+WORKDIR /launch
+
+# Install aviato-client from local source (not on PyPI).
+# Build with: --build-context aviato-client=<path-to-aviato-client>
+COPY --link --from=aviato-client . /tmp/aviato-client
+RUN pip install --no-cache-dir --extra-index-url https://buf.build/gen/python /tmp/aviato-client && rm -rf /tmp/aviato-client
+
+COPY --link requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY --link job.py ./
+
+ENV PYTHONUNBUFFERED=1
+ENTRYPOINT ["python", "job.py"]
+
+# Build locally for now since aviato-client is not published to a registry.
+# Run from the launch-jobs repo root:
+# CI=1 python3 -c "
+# from docker_build import build
+# build(
+#     image='exianwb/launch_sandbox',
+#     context_path='jobs/sandbox',
+#     dockerfile='jobs/sandbox/Dockerfile.wandb',
+#     build_contexts={'aviato-client': '../aviato-client'},
+#     platforms=['linux/amd64', 'linux/arm64'],
+# )
+# "

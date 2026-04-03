@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 FROM python:3.11-slim
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
@@ -9,15 +10,40 @@ RUN pip install uv
 
 WORKDIR /workspace
 
+# Install local-only deps (not on PyPI).
+# Build with: --build-context aviato-client=<path> --build-context inspect-aviato-sandbox=<path>
+COPY --link --from=aviato-client . /tmp/aviato-client
+RUN pip install --no-cache-dir --extra-index-url https://buf.build/gen/python /tmp/aviato-client && rm -rf /tmp/aviato-client
+
+COPY --link --from=inspect-aviato-sandbox . /tmp/inspect-aviato-sandbox
+RUN pip install --no-cache-dir --no-deps /tmp/inspect-aviato-sandbox && rm -rf /tmp/inspect-aviato-sandbox
+
 # Copy shared files from parent directory
-COPY pyproject.toml launch_secrets.py leaderboard.py ./
+COPY pyproject.toml leaderboard.py ./
 
 # Copy job-specific files from subdirectory
 COPY api_model/ ./
 
 ENV UV_LINK_MODE=copy
+# Pre-install CPU-only PyTorch (~200MB vs ~2GB with CUDA) — evals hit LLM APIs, not local GPUs.
+RUN --mount=type=cache,target=/root/.cache/uv uv pip install torch torchvision \
+    --index-url https://download.pytorch.org/whl/cpu --system
 RUN --mount=type=cache,target=/root/.cache/uv uv pip install -r pyproject.toml --system
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["/bin/sh", "-c", "python3 evals.py"]
+# Build locally since aviato-client and inspect-aviato-sandbox are not published.
+# Run from the launch-jobs repo root:
+# CI=1 python3 -c "
+# from docker_build import build
+# build(
+#     image='exianwb/inspect_ai_evals',
+#     context_path='jobs/inspect_ai_evals',
+#     dockerfile='jobs/inspect_ai_evals/api_model/Dockerfile.wandb',
+#     build_contexts={
+#         'aviato-client': '../aviato-client',
+#         'inspect-aviato-sandbox': '../inspect_aviato_sandbox',
+#     },
+#     platforms=['linux/amd64', 'linux/arm64'],
+# )
+# "
