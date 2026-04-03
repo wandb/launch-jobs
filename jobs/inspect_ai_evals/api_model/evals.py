@@ -6,13 +6,55 @@ from inspect_ai import eval_set
 from inspect_ai._eval.loader import load_tasks
 from inspect_ai._eval.task import task_with
 from inspect_ai.model import get_model
+from inspect_ai.util import SandboxEnvironmentSpec
+from inspect_ai.util._sandbox.registry import registry_find_sandboxenv
 from wandb.sdk import launch
+from weave.evaluation.eval_imperative import _active_evaluation_loggers
 
 from leaderboard import create_leaderboard
 from launch_secrets import get_launch_secret_from_env
 from datasets.exceptions import DatasetNotFoundError
 
+# Import to register the Aviato sandbox environment
+import inspect_aviato_sandbox  # noqa: F401
+
+# Use inspect_evals swe_bench with Aviato support
+from inspect_evals.swe_bench import swe_bench
+from inspect_evals.swe_bench.swe_bench_tasks import swe_bench_react_agent
+
 INSPECT_EVAL_PREFIX = "inspect_evals/"
+
+
+def create_aviato_sandbox_spec_with_env(
+    sandbox_type: str,
+    image_name: str,
+    allow_internet: bool,
+) -> SandboxEnvironmentSpec:
+    """Create Aviato sandbox spec with environment variables."""
+    sandbox_cls = registry_find_sandboxenv("aviato")
+    
+    config = {
+        "container_image": image_name,
+        "tags": (),
+        "base_url": os.environ.get("AVIATO_BASE_URL", "https://atc.cwaviato.com"),
+        "environment_variables": {
+            "WANDB_API_KEY": os.environ.get("WANDB_API_KEY", ""),
+            "WANDB_ENTITY_NAME": os.environ.get("WANDB_ENTITY_NAME", ""),
+            "WANDB_PROJECT_NAME": os.environ.get("WANDB_PROJECT_NAME", ""),
+            # Model API keys
+            "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY", ""),
+            # Hugging Face API keys
+            "HUGGINGFACE_TOKEN": os.environ.get("HUGGINGFACE_TOKEN", ""),
+            "HF_TOKEN": os.environ.get("HF_TOKEN", ""),
+            "HUGGINGFACE_HUB_TOKEN": os.environ.get("HUGGINGFACE_HUB_TOKEN", ""),
+            # Models
+            "INSPECT_EVAL_MODEL": os.environ.get("INSPECT_EVAL_MODEL", ""),
+            "INSPECT_GRADER_MODEL": os.environ.get("INSPECT_GRADER_MODEL", ""),
+        },
+    }
+    
+    typed_config = sandbox_cls.config_deserialize(config)
+    return SandboxEnvironmentSpec(type="aviato", config=typed_config)
 
 
 def get_native_providers() -> set[str]:
@@ -84,6 +126,10 @@ def resolve_model_name(model_name: str):
 def main():
     config = launch.load_wandb_config()
     with wandb.init(config=dict(config)) as run:
+        os.environ.setdefault("WANDB_ENTITY", run.entity)
+        os.environ.setdefault("WANDB_ENTITY_NAME", "coreweave_ml")
+        os.environ.setdefault("WANDB_PROJECT", run.project)
+        os.environ.setdefault("WANDB_PROJECT_NAME", run.project)
         weave_client = weave.init(f"{run.entity}/{run.project}")
 
         _, hf_token = get_launch_secret_from_env("hf_token", run.config)
@@ -148,7 +194,16 @@ def main():
             try:
                 loaded_task = [
                     task_with(
-                        load_tasks([f"{INSPECT_EVAL_PREFIX}{task}"])[0], model=model
+                        swe_bench(
+                            dataset="princeton-nlp/SWE-bench_Lite",
+                            split="test",
+                            instance_ids=run.config.get("instance_ids", ["django__django-11019"]),
+                            sandbox_type="aviato",
+                            sandbox_config=create_aviato_sandbox_spec_with_env,
+                            arch="x86_64",
+                            solver=swe_bench_react_agent(),
+                        ) if task == "swe_bench" else load_tasks([f"{INSPECT_EVAL_PREFIX}{task}"])[0], 
+                        model=model
                     )
                 ]
                 sample_limit = run.config.get("limit", None)
