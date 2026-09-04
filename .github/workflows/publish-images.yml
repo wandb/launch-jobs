@@ -1,0 +1,116 @@
+name: Publish changed images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "jobs/**"
+      - "services/**"
+      - ".github/image-builds.json"
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Image name from .github/image-builds.json, or 'all'"
+        required: true
+        default: all
+
+permissions:
+  contents: read
+
+jobs:
+  select-images:
+    if: github.event_name == 'workflow_dispatch' || vars.IMAGE_PUBLISHING_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+      count: ${{ steps.select.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: select
+        name: Select affected images
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+          FORCED_IMAGE: ${{ inputs.image }}
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            matrix="$(.github/scripts/select-images.py --image "$FORCED_IMAGE")"
+          else
+            matrix="$(git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" | .github/scripts/select-images.py)"
+          fi
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "count=$(jq '.include | length' <<< "$matrix")" >> "$GITHUB_OUTPUT"
+
+  build-and-push:
+    needs: select-images
+    if: needs.select-images.outputs.count != '0'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.select-images.outputs.matrix) }}
+    concurrency:
+      group: publish-image-${{ matrix.image }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - id: tags
+        name: Generate image tags
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          branch="${GITHUB_REF_NAME//\//-}"
+          {
+            echo "branch=wandb/$IMAGE:$branch"
+            echo "sha=wandb/$IMAGE:$GITHUB_SHA"
+          } >> "$GITHUB_OUTPUT"
+      - id: build
+        name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.sha }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          provenance: false
+      - name: Validate published manifest
+        env:
+          SHA_TAG: ${{ steps.tags.outputs.sha }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          test -n "$DIGEST"
+          published_digest="$(docker buildx imagetools inspect "$SHA_TAG" | awk '$1 == "Digest:" { print $2; exit }')"
+          test "$published_digest" = "$DIGEST"
+          manifest="$(docker buildx imagetools inspect --raw "$SHA_TAG")"
+          jq -e '
+            [.manifests[].platform | "\(.os)/\(.architecture)"]
+            | contains(["linux/amd64", "linux/arm64"])
+          ' <<< "$manifest"
+          echo "Published $SHA_TAG at $DIGEST" >> "$GITHUB_STEP_SUMMARY"
+      - name: Promote current commit to branch tag
+        env:
+          BRANCH_TAG: ${{ steps.tags.outputs.branch }}
+          SHA_TAG: ${{ steps.tags.outputs.sha }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          remote_sha="$(git ls-remote origin "refs/heads/$GITHUB_REF_NAME" | awk '{ print $1 }')"
+          if [[ "$remote_sha" != "$GITHUB_SHA" ]]; then
+            echo "Skipping $BRANCH_TAG: branch has advanced to $remote_sha." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          docker buildx imagetools create --tag "$BRANCH_TAG" "$SHA_TAG@$DIGEST"
+          published_digest="$(docker buildx imagetools inspect "$BRANCH_TAG" | awk '$1 == "Digest:" { print $2; exit }')"
+          test "$published_digest" = "$DIGEST"
+          echo "Promoted $BRANCH_TAG to $DIGEST" >> "$GITHUB_STEP_SUMMARY"
