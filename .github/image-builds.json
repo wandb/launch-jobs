@@ -1,0 +1,86 @@
+{
+  "images": [
+    {
+      "path": "jobs/deploy_to_nvidia_triton",
+      "image": "job_deploy_to_nvidia_triton"
+    },
+    {
+      "path": "jobs/deploy_to_sagemaker_endpoints",
+      "image": "job_deploy_to_sagemaker_endpoints"
+    },
+    {
+      "path": "jobs/distributed_test",
+      "image": "job_distributed_test"
+    },
+    {
+      "path": "jobs/fashion_mnist_train",
+      "image": "job_fashion_mnist_train"
+    },
+    {
+      "path": "jobs/github_actions_workflow_dispatch",
+      "image": "job_github_actions_workflow_dispatch"
+    },
+    {
+      "path": "jobs/gpu_optimize_with_tensor_rt",
+      "image": "job_gpu_optimize_with_tensor_rt"
+    },
+    {
+      "path": "jobs/hello_world",
+      "image": "job_hello_world"
+    },
+    {
+      "path": "jobs/http_webhook",
+      "image": "job_http_webhook"
+    },
+    {
+      "path": "jobs/inspect_ai_evals/model_checkpoint",
+      "image": "job_inspect_ai_evals_model_checkpoint",
+      "context": "jobs/inspect_ai_evals",
+      "dockerfile": "jobs/inspect_ai_evals/model_checkpoint/Dockerfile.wandb",
+      "shared_path": "jobs/inspect_ai_evals",
+      "shared_exclude_paths": [
+        "jobs/inspect_ai_evals/api_model",
+        "jobs/inspect_ai_evals/model_checkpoint"
+      ]
+    },
+    {
+      "path": "jobs/inspect_ai_evals/api_model",
+      "image": "job_inspect_ai_evals_api_model",
+      "context": "jobs/inspect_ai_evals",
+      "dockerfile": "jobs/inspect_ai_evals/api_model/Dockerfile.wandb",
+      "shared_path": "jobs/inspect_ai_evals",
+      "shared_exclude_paths": [
+        "jobs/inspect_ai_evals/api_model",
+        "jobs/inspect_ai_evals/model_checkpoint"
+      ]
+    },
+    {
+      "path": "jobs/msft_teams_webhook",
+      "image": "job_msft_teams_webhook"
+    },
+    {
+      "path": "jobs/openai_evals",
+      "image": "job_openai_evals"
+    },
+    {
+      "path": "jobs/sql_query",
+      "image": "job_sql_query"
+    },
+    {
+      "path": "jobs/stable_diffusion_inference",
+      "image": "job_stable_diffusion_inference"
+    },
+    {
+      "path": "jobs/sweep_schedulers/optuna_scheduler",
+      "image": "job_sweep_schedulers_optuna_scheduler"
+    },
+    {
+      "path": "jobs/sweep_schedulers/wandb_scheduler",
+      "image": "job_sweep_schedulers_wandb_scheduler"
+    },
+    {
+      "path": "services/vllm_server",
+      "image": "service_vllm_server"
+    }
+  ]
+}
