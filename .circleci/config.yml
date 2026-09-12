@@ -55,7 +55,6 @@ workflows:
                   "jobs/hello_world",
                   "jobs/http_webhook",
                   "jobs/inspect_ai_evals/model_checkpoint",
-                  "jobs/inspect_ai_evals/api_model",
                   "jobs/msft_teams_webhook",
                   "jobs/openai_evals",
                   "jobs/sql_query",

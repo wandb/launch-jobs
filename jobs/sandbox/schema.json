@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "properties": {
+    "image":           { "type": "string", "required": true },
+    "command":         { "type": "string" },
+    "args":            { "type": "array", "items": { "type": "string" } },
+    "env_vars":        { "type": "object" },
+    "resources":       { "type": "object" },
+    "timeout":         { "type": "number" },
+    "files_artifact":  { "type": "string" },
+    "tags":            { "type": "array", "items": { "type": "string" } },
+    "tower_ids":       { "type": "array", "items": { "type": "string" } }
+  }
+}

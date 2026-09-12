@@ -1,6 +1,15 @@
 {
   "type": "object",
   "properties": {
+    "image":           { "type": "string" },
+    "command":         { "type": "string" },
+    "args":            { "type": "array", "items": { "type": "string" } },
+    "env_vars":        { "type": "object" },
+    "resources":       { "type": "object" },
+    "timeout":         { "type": "number" },
+    "files_artifact":  { "type": "string" },
+    "tags":            { "type": "array", "items": { "type": "string" } },
+    "tower_ids":       { "type": "array", "items": { "type": "string" } },
     "tasks": {
       "type": "array",
       "title": "Evaluations",
@@ -105,6 +114,7 @@
           "squad",
           "stereoset",
           "strong_reject",
+          "swebench",
           "sycophancy",
           "truthfulqa",
           "uccb",
@@ -127,33 +137,24 @@
       "placeholder": "E.g. 5",
       "minimum": 0
     },
-    "model": {
-      "type": "object",
-      "title": "Model",
-      "description": "Model to use for the evaluation job",
-      "properties": {
-        "model_name": {
-          "type": "string",
-          "title": "Model name",
-          "description": "Name of the model to use for the evaluation job.",
-          "placeholder": "openai/gpt-4o",
-          "required": true
-        },
-        "base_url": {
-          "type": "string",
-          "title": "Base URL",
-          "description": "Base URL for the model to use for the evaluation job.",
-          "placeholder": "https://api.openai.com/v1",
-          "required": true
-        },
-        "api_key_var": {
-          "type": "string",
-          "title": "API key",
-          "description": "API key for model access. Team secrets can be managed in your team settings by team admins.",
-          "format": "secret",
-          "required": true
-        }
-      }
+    "model_name": {
+      "type": "string",
+      "title": "Model name",
+      "description": "Name of the model to use for the evaluation job.",
+      "placeholder": "openai/gpt-4o",
+      "required": true
+    },
+    "model_base_url": {
+      "type": "string",
+      "title": "Base URL",
+      "description": "Base URL for the model API endpoint.",
+      "placeholder": "https://api.openai.com/v1"
+    },
+    "model_api_key": {
+      "type": "string",
+      "title": "API key",
+      "format": "secret",
+      "description": "API key for model access. Team secrets can be managed in your team settings by team admins."
     },
     "create_leaderboard": {
       "type": "boolean",
@@ -172,6 +173,11 @@
       "title": "Scorer API key",
       "description": "Some evals use an OpenAI model as the default scorer.",
       "format": "secret"
+    },
+    "wandb_api_key": {
+      "type": "string",
+      "format": "secret",
+      "title": "W&B API key"
     }
   }
 }
