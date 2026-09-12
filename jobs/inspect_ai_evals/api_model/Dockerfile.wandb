@@ -1,23 +1,41 @@
 FROM python:3.11-slim
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
+# Cache downloaded .deb files across builds (avoids re-download when layer invalidated)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends \
-    build-essential git curl ca-certificates \
+    build-essential git curl ca-certificates openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install uv
+# Cache pip download directory across builds
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install uv
 
 WORKDIR /workspace
 
-# Copy shared files from parent directory
-COPY pyproject.toml launch_secrets.py leaderboard.py ./
+# Copy local package dependencies to a separate location (these rarely change)
+COPY inspect_aviato_sandbox /tmp/local_packages/inspect_aviato_sandbox
+COPY inspect_evals /tmp/local_packages/inspect_evals
 
-# Copy job-specific files from subdirectory
-COPY api_model/ ./
+# Copy only the pyproject.toml first for dependency installation
+COPY launch-jobs-repo/jobs/inspect_ai_evals/pyproject.toml ./pyproject.toml
 
 ENV UV_LINK_MODE=copy
-RUN --mount=type=cache,target=/root/.cache/uv uv pip install -r pyproject.toml --system
+# Update paths in pyproject.toml and install dependencies (this layer will be cached)
+# Cache mount persists uv's download cache across builds for faster re-installs
+RUN --mount=type=ssh \
+    --mount=type=cache,target=/root/.cache/uv \
+    mkdir -p -m 0700 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts && \
+    git config --global url."ssh://git@github.com/".insteadOf "https://github.com/" && \
+    sed -i 's|path = "../../../inspect_aviato_sandbox|path = "/tmp/local_packages/inspect_aviato_sandbox|g' pyproject.toml && \
+    sed -i 's|path = "../../../inspect_evals|path = "/tmp/local_packages/inspect_evals|g' pyproject.toml && \
+    uv pip install --system -e .
+
+# Copy application code last (this changes frequently during iteration)
+COPY launch-jobs-repo/jobs/inspect_ai_evals/launch_secrets.py \
+     launch-jobs-repo/jobs/inspect_ai_evals/leaderboard.py ./
+COPY launch-jobs-repo/jobs/inspect_ai_evals/api_model/ ./
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["/bin/sh", "-c", "python3 evals.py"]
+CMD ["python3", "evals.py"]
