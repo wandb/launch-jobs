@@ -42,31 +42,33 @@ Each selected image receives:
 The 17 image names and build contexts remain defined in
 `.github/image-builds.json`.
 
-## Phase 1: Provision least-privilege WIF access
+## Phase 1: Extend the shared CI WIF access
 
 This work belongs in the infrastructure repository that manages W&B's GitHub WIF
 bindings and GitHub Actions secrets (currently `wandb/core/terraform/ci/global`).
+Follow the existing Bufstream setup rather than creating another service account:
 
-1. Create a dedicated `launch-jobs` image-publisher service account in
-   `wandb-production`; do not add this repository to the broadly shared CI service
-   account.
-2. Allow only the GitHub OIDC subject for `wandb/launch-jobs` on `main` to
-   impersonate it. If GitHub environments are introduced, restrict the subject to
-   the publishing environment as well.
-3. Grant the service account only the Artifact Registry permissions needed to
-   read and write under the `public` repository. Grant access to a separate cache
-   repository only if registry-backed build caching is adopted.
-4. Manage these repository secrets through Terraform:
+1. Add the exact GitHub OIDC subject for `wandb/launch-jobs` on `main` to the WIF
+   binding for the existing `tf-github-ci` service account. Use a subject principal
+   restricted to `repo:wandb/launch-jobs:ref:refs/heads/main`, rather than a
+   repository-wide principal set.
+2. Reuse the service account's existing Artifact Registry writer access to the
+   `wandb-production/public` repository. Do not add new project-wide roles or
+   registry permissions for `launch-jobs`.
+3. Manage these repository secrets through Terraform, using the same WIF provider
+   and service-account values as Bufstream:
    - `CI_WORKLOAD_IDENTITY_PROVIDER`
    - `CI_WORKLOAD_IDENTITY_SERVICE_ACCOUNT`
-5. Confirm that forks and pull requests cannot obtain an identity token accepted
-   by the provider.
+4. Confirm that forks, pull requests, and workflows on other branches cannot
+   obtain an identity token accepted for service-account impersonation.
 
 Acceptance criteria:
 
 - A workflow on `main` can authenticate and push a disposable test tag.
-- A workflow from any other branch/ref cannot impersonate the service account.
-- No JSON service-account key is created or stored in GitHub.
+- A workflow from any other branch/ref cannot impersonate the shared service
+  account as `wandb/launch-jobs`.
+- No new service account, JSON service-account key, or broader GAR grant is
+  created.
 
 ## Phase 2: Add GAR authentication and canonical publishing
 
@@ -197,8 +199,8 @@ These are useful but not required to remove CircleCI:
 
 Before implementation starts, assign owners for:
 
-- the `wandb/core` Terraform/WIF change;
-- GAR repository IAM and retention policy;
+- the `wandb/core` Terraform/WIF binding and repository-secret change;
+- GAR retention policy (the shared account already has repository IAM);
 - creation and rotation of the Docker Hub organization/service-account token;
 - repository administration needed to disable CircleCI and remove status checks.
 
