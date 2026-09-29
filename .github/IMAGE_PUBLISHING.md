@@ -42,8 +42,7 @@ the 17 repositories where Docker Hub supports that restriction.
 
 A Docker Hub organization owner must create or select the service account and
 create its access token. GitHub does not expose existing secret values. Rotate
-the old token rather than assuming it belongs to the account previously used by
-CircleCI.
+credentials when their ownership or scope is unclear.
 
 A GitHub repository administrator can store the credentials without putting them
 in process arguments or shell history. Each command securely prompts for its
@@ -54,34 +53,24 @@ gh secret set DOCKERHUB_USERNAME --repo wandb/launch-jobs
 gh secret set DOCKERHUB_TOKEN --repo wandb/launch-jobs
 ```
 
-## Initial rollout
+## Automatic and manual publishing
 
-Push-triggered publishing is disabled unless the repository variable
-`IMAGE_PUBLISHING_ENABLED` is exactly `true`. Manual runs remain available while
-publishing is disabled.
+Push-triggered publishing is active when the repository variable
+`IMAGE_PUBLISHING_ENABLED` is exactly `true`. Changes under `jobs/`, `services/`,
+or `.github/image-builds.json` select and publish only the affected images.
 
-After the WIF infrastructure change has applied and the Docker Hub secrets are
-configured:
+Manual runs remain available regardless of the variable's value. To retry or
+publish one image, run:
 
-1. Run `Publish changed images` manually for `job_hello_world`.
-2. Confirm its SHA and `main` tags exist in both GAR and Docker Hub and contain
-   `linux/amd64` and `linux/arm64` manifests.
-3. Run it manually for `job_inspect_ai_evals_api_model` to exercise the shared
-   build context.
-4. Rerun one image and confirm the workflow reuses its canonical GAR SHA image.
-5. Enable push-triggered publishing:
+```bash
+gh workflow run publish-images.yml \
+  --repo wandb/launch-jobs \
+  --ref main \
+  -f image=job_hello_world
+```
 
-   ```bash
-   gh variable set IMAGE_PUBLISHING_ENABLED --repo wandb/launch-jobs --body true
-   ```
-
-6. Merge a narrowly scoped image change and confirm only the affected image is
-   published.
-7. After at least one successful push-triggered run, remove the CircleCI config,
-   disable the CircleCI project/integration, and revoke its publishing token.
-
-Disable automatic publishing without affecting manual runs by setting the
-variable to `false`.
+Use `-f image=all` to select every manifest entry. Disable automatic publishing
+without affecting manual runs by setting the variable to `false`.
 
 ## Failure and retry behavior
 
@@ -107,9 +96,6 @@ top-level index digests to match, because registries may rewrite index metadata.
 4. Confirm the GAR image was reused and the Docker Hub SHA and `main` tags match
    its platform manifests.
 5. Revoke the old Docker Hub token.
-
-During the CircleCI parity period, determine whether CircleCI uses the same token
-before revoking it. If it does, retain the old token until CircleCI is disabled.
 
 Repository administrators can verify secret presence and rotation timestamps,
 but not secret values:
